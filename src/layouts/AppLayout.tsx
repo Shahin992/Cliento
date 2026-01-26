@@ -11,6 +11,7 @@ import {
 
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
+import PwaInstallButton from '../components/PwaInstallButton';
 
 const drawerWidth = 240;
 const collapsedWidth = 80;
@@ -75,6 +76,7 @@ const AppLayout = () => {
         <Box sx={{ height: topbarMinHeight, width:'100%', margin:'16px' }} />
         <Outlet />
       </Box>
+      <PwaInstallButton />
     </Box>
   );
 };

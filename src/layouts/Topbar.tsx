@@ -93,25 +93,20 @@ const Topbar = ({
               </IconButton>
             ) : null}
             <Box
+              component="img"
+              src="/Cliento-logo.png"
+              alt="Cliento"
               sx={{
-                width: 36,
-                height: 36,
-                borderRadius: 2,
-                bgcolor: '#1e2a78',
-                display: 'grid',
-                placeItems: 'center',
-                color: 'white',
-                fontWeight: 700,
-                boxShadow: 'none',
+                height: { xs: 38, md: 48 },
+                width: 'auto',
+                display: 'block',
               }}
-            >
-              C
-            </Box>
-            {!isMobile ? (
+            />
+            {/* {!isMobile ? (
               <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
                 Cliento CRM
               </Typography>
-            ) : null}
+            ) : null} */}
           </Box>
         <Box
           sx={{
