@@ -94,7 +94,7 @@ const CustomModal = ({
       <Box sx={{ my: 2, width: '100%' }}>{children}</Box>
 
       <Box sx={footerStyle}>
-        <CustomButton variant="outlined" customColor="red" onClick={handleClose}>
+        <CustomButton variant="outlined" customColor="#ef4444" onClick={handleClose}>
           {closeButtonText}
         </CustomButton>
         {handleSubmit ? (

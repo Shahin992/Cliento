@@ -1,26 +1,19 @@
 import React from 'react';
-import type { SxProps, Theme } from '@mui/material/styles';
-import { AppBar, Avatar, Box, Button, Divider, IconButton, InputAdornment, Menu, MenuItem, Stack, Toolbar, Typography } from '@mui/material';
+import { AppBar, Avatar, Box, Divider, IconButton, InputAdornment, Menu, MenuItem, Stack, Toolbar, Typography } from '@mui/material';
 import { Add, Logout, Menu as MenuIcon, Person, Search, VpnKey } from '@mui/icons-material';
 
 import BasicInput from '../common/BasicInput';
 import { CustomButton } from '../common/CustomButton';
 
 interface TopbarProps {
-  pageTitle: string;
-  isCollapsed: boolean;
   isMobile: boolean;
-  isXs: boolean;
   currentDrawerWidth: number;
   onOpenMobile: () => void;
-  minHeight: SxProps<Theme>['minHeight'];
+  minHeight: number | { xs: number; sm: number };
 }
 
 const Topbar = ({
-  pageTitle,
-  isCollapsed,
   isMobile,
-  isXs,
   currentDrawerWidth,
   onOpenMobile,
   minHeight,

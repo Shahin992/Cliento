@@ -1,4 +1,4 @@
-import type React from 'react';
+import type { CSSProperties } from 'react';
 import type { SelectChangeEvent, SelectProps } from '@mui/material';
 import { FormHelperText, InputBase, MenuItem, Select } from '@mui/material';
 import { styled } from '@mui/material/styles';
@@ -54,7 +54,7 @@ const deletedNoteSx = {
   ml: 1,
 };
 
-const preloaderSx = {
+const preloaderSx: CSSProperties = {
   position: 'absolute',
   top: 0,
   left: 0,
@@ -71,7 +71,7 @@ const preloaderSx = {
   cursor: 'progress',
 };
 
-type BasicSelectOption = Record<string, string | number | boolean>;
+type BasicSelectOption = Record<string, string | number>;
 
 interface BasicSelectProps {
   options: BasicSelectOption[];
@@ -82,7 +82,7 @@ interface BasicSelectProps {
   value?: SelectProps['value'];
   disabled?: boolean;
   selectedOption?: (option: BasicSelectOption) => void;
-  deletedMapping?: { field: string; value: string | number | boolean };
+  deletedMapping?: { field: string; value: string | number };
   className?: string | null;
   emptyable?: boolean;
   fullWidth?: boolean;
@@ -128,7 +128,12 @@ const BasicSelect = ({
       }
     }
 
-    onChange({ ...event, target: { ...event.target, value: newValue } });
+    const patchedEvent = {
+      ...event,
+      target: { ...event.target, value: newValue, name },
+    } as SelectChangeEvent<unknown>;
+
+    onChange(patchedEvent);
 
     if (selectedOption && !multiple) {
       const selected = options.find(
@@ -140,13 +145,20 @@ const BasicSelect = ({
     }
   };
 
-  const renderOptions = () =>
-    options.map((option, index) => {
+  const renderOptions = () => {
+    const filtered = options.filter((option) => {
       const isDeleted =
         deletedMapping && option[deletedMapping.field] === deletedMapping.value;
-      const isCurrent = value === option[mapping.value];
+      const isCurrent = multiple
+        ? Array.isArray(value) && value.includes(option[mapping.value])
+        : value === option[mapping.value];
 
-      if (isDeleted && !isCurrent) return null;
+      return !isDeleted || isCurrent;
+    });
+
+    return filtered.map((option, index) => {
+      const isDeleted =
+        deletedMapping && option[deletedMapping.field] === deletedMapping.value;
 
       return (
         <MenuItem
@@ -162,6 +174,7 @@ const BasicSelect = ({
         </MenuItem>
       );
     });
+  };
 
   return (
     <div
@@ -221,7 +234,6 @@ const BasicSelect = ({
               },
             },
           },
-          getContentAnchorEl: null,
         }}
         className={className ?? ''}
         error={!!error}

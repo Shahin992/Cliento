@@ -1,9 +1,13 @@
-import { styled } from '@mui/material/styles';
 import Button from '@mui/material/Button';
+import { styled } from '@mui/material/styles';
+
+interface CustomButtonProps {
+  customColor?: string;
+}
 
 export const CustomButton = styled(Button, {
   shouldForwardProp: (prop) => prop !== 'customColor',
-})(({ customColor = '#346fef' }) => ({
+})<CustomButtonProps>(({ customColor = '#346fef' }) => ({
   fontWeight: 600,
   fontSize: '15px',
   textTransform: 'capitalize',

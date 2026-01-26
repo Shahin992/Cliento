@@ -1,4 +1,4 @@
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import { useState } from 'react';
 import { Box, useMediaQuery, useTheme } from '@mui/material';
 import {
@@ -23,21 +23,11 @@ const navItems = [
   { label: 'My Profile', to: '/profile', icon: <Person2Outlined sx={{ width: 20, height: 20 }} /> },
 ];
 
-const pageTitleMap: Record<string, string> = {
-  '/': 'Dashboard',
-  '/appointments': 'Appointments',
-  '/analytics': 'Analytics',
-  '/settings': 'Settings',
-};
-
 const AppLayout = () => {
-  const location = useLocation();
-  const pageTitle = pageTitleMap[location.pathname] ?? 'Dashboard';
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const isXs = useMediaQuery(theme.breakpoints.down('sm'));
   const currentDrawerWidth = isCollapsed ? collapsedWidth : drawerWidth;
   const topbarMinHeight = { xs: 96, sm: 72 };
 
@@ -54,10 +44,7 @@ const AppLayout = () => {
       }}
     >
       <Topbar
-        pageTitle={pageTitle}
-        isCollapsed={isCollapsed}
         isMobile={isMobile}
-        isXs={isXs}
         currentDrawerWidth={currentDrawerWidth}
         onOpenMobile={() => setIsMobileOpen(true)}
         minHeight={topbarMinHeight}

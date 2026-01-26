@@ -1,10 +1,9 @@
-import type React from 'react';
 import type { RadioGroupProps } from '@mui/material';
 import { FormControl, FormControlLabel, FormHelperText, Radio, RadioGroup } from '@mui/material';
 import { styled } from '@mui/material/styles';
 
 // ✅ Styled Radio to look consistent with BasicSelect
-const StyledRadio = styled(Radio)(({ theme }) => ({
+const StyledRadio = styled(Radio)(() => ({
   color: '#6c5ce7',
   '&.Mui-checked': {
     color: '#6c5ce7',
