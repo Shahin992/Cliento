@@ -46,8 +46,11 @@ const AppLayout = () => {
       sx={{
         display: 'flex',
         minHeight: '100vh',
+        width: '100vw',
+        maxWidth: '100vw',
         bgcolor: '#f3f6fb',
         color: '#1f2937',
+        overflowX: 'hidden',
       }}
     >
       <Topbar
@@ -74,12 +77,15 @@ const AppLayout = () => {
       <Box
         component="main"
         sx={{
-          flexGrow: 1,
-          px: { xs: 2, md: 4 },
-          py: { xs: 3, md: 4 },
+          flex: '1 1 auto',
+          minWidth: 0,
+          px: 0,
+          py: 0,
+          width: '100%',
+          maxWidth: '100%',
         }}
       >
-        <Box sx={{ height: topbarMinHeight }} />
+        <Box sx={{ height: topbarMinHeight, width:'100%', margin:'16px' }} />
         <Outlet />
       </Box>
     </Box>
