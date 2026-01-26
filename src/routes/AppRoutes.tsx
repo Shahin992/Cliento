@@ -5,6 +5,7 @@ import BillingsPage from '../pages/BillingsPage';
 import ContactsPage from '../pages/ContactsPage';
 import DashboardPage from '../pages/DashboardPage';
 import DealsPage from '../pages/DealsPage';
+import DealDetailsPage from '../pages/DealDetailsPage';
 import ProfilePage from '../pages/ProfilePage';
 
 const AppRoutes = () => (
@@ -12,6 +13,7 @@ const AppRoutes = () => (
     <Route element={<AppLayout />}>
       <Route path="/" element={<DashboardPage />} />
       <Route path="/deals" element={<DealsPage />} />
+      <Route path="/deals/:dealId" element={<DealDetailsPage />} />
       <Route path="/contacts" element={<ContactsPage />} />
       <Route path="/billings" element={<BillingsPage />} />
       <Route path="/profile" element={<ProfilePage />} />
