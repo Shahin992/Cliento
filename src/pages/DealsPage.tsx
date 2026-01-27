@@ -14,6 +14,7 @@ import { Link } from 'react-router-dom';
 
 import PageHeader from '../components/PageHeader';
 import { CustomButton } from '../common/CustomButton';
+import AddDealModal from '../components/deals/modals/AddDealModal';
 import { deals } from '../data/deals';
 
 const borderColor = '#e7edf6';
@@ -29,6 +30,7 @@ const statusStyles: Record<string, { color: string; background: string }> = {
 const DealsPage = () => {
   const [sortBy, setSortBy] = useState('date-created');
   const totalDeals = 136;
+  const [isAddDealOpen, setIsAddDealOpen] = useState(false);
 
   return (
     <Box
@@ -43,7 +45,19 @@ const DealsPage = () => {
         gap: 2,
       }}
     >
-      <PageHeader title="Deals" subtitle="Track active opportunities" />
+      <PageHeader
+        title="Deals"
+        subtitle="Track active opportunities"
+        action={
+          <CustomButton
+            variant="contained"
+            sx={{ borderRadius: 999, px: 2.5, textTransform: 'none' }}
+            onClick={() => setIsAddDealOpen(true)}
+          >
+            Add Deal
+          </CustomButton>
+        }
+      />
 
       <Box
         sx={{
@@ -181,6 +195,7 @@ const DealsPage = () => {
                       fontWeight: 600,
                       color: '#1f2937',
                       textDecoration: 'none',
+                      marginRight:'8px',
                       '&:hover': { color: primary },
                     }}
                   >
@@ -313,6 +328,12 @@ const DealsPage = () => {
           </CustomButton>
         </Box>
       </Box>
+
+      <AddDealModal
+        open={isAddDealOpen}
+        onClose={() => setIsAddDealOpen(false)}
+        onSave={() => setIsAddDealOpen(false)}
+      />
     </Box>
   );
 };

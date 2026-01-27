@@ -4,9 +4,10 @@ import { Box, useMediaQuery, useTheme } from '@mui/material';
 import {
   CurrencyExchange,
   Dashboard,
-  PeopleOutlined,
   Person2Outlined,
   RequestQuote,
+  TaskAltOutlined,
+  PeopleOutlined,
 } from '@mui/icons-material';
 
 import Sidebar from './Sidebar';
@@ -20,6 +21,7 @@ const navItems = [
   { label: 'Dashboard', to: '/', icon: <Dashboard sx={{ width: 20, height: 20 }} /> },
   { label: 'Deals', to: '/deals', icon: <CurrencyExchange sx={{ width: 20, height: 20 }} /> },
   { label: 'Contacts', to: '/contacts', icon: <PeopleOutlined sx={{ width: 20, height: 20 }} /> },
+  { label: 'Tasks', to: '/tasks', icon: <TaskAltOutlined sx={{ width: 20, height: 20 }} /> },
   { label: 'Billing', to: '/billings', icon: <RequestQuote sx={{ width: 20, height: 20 }} /> },
   { label: 'My Profile', to: '/profile', icon: <Person2Outlined sx={{ width: 20, height: 20 }} /> },
 ];
