@@ -1,7 +1,8 @@
+import type { ButtonProps } from '@mui/material/Button';
 import Button from '@mui/material/Button';
 import { styled } from '@mui/material/styles';
 
-interface CustomButtonProps {
+interface CustomButtonProps extends ButtonProps {
   customColor?: string;
 }
 
