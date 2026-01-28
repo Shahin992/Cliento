@@ -105,7 +105,7 @@ const Sidebar = ({
               '&.active': {
                 bgcolor: '#5b4dff',
                 color: 'white',
-               },
+              },
             }}
           >
             <Box sx={{ color: 'inherit' }}>{item.icon}</Box>
