@@ -4,6 +4,7 @@ import { styled } from '@mui/material/styles';
 
 interface CustomButtonProps extends ButtonProps {
   customColor?: string;
+  to?: string;
 }
 
 export const CustomButton = styled(Button, {
