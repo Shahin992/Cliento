@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   Avatar,
   Box,
@@ -29,11 +29,21 @@ interface AddDealModalProps {
 const AddDealModal = ({ open, onClose, onSave }: AddDealModalProps) => {
   const [isSelectCustomerOpen, setIsSelectCustomerOpen] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState(contacts[0]?.id ?? '');
+  const [roomImages, setRoomImages] = useState<File[]>([]);
+  const [roomImagePreviews, setRoomImagePreviews] = useState<string[]>([]);
 
   const selectedCustomer = useMemo(
     () => contacts.find((item) => item.id === selectedCustomerId) ?? contacts[0],
     [selectedCustomerId],
   );
+
+  useEffect(() => {
+    const nextPreviews = roomImages.map((file) => URL.createObjectURL(file));
+    setRoomImagePreviews(nextPreviews);
+    return () => {
+      nextPreviews.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [roomImages]);
 
   return (
     <>
@@ -44,12 +54,14 @@ const AddDealModal = ({ open, onClose, onSave }: AddDealModalProps) => {
             top: '50%',
             left: '50%',
             transform: 'translate(-50%, -50%)',
-            width: { xs: '92vw', sm: 560 },
-            maxWidth: '92vw',
+            width: { xs: '94vw', sm: 560 },
+            maxWidth: '94vw',
+            maxHeight: { xs: '90vh', sm: '85vh' },
+            overflowY: 'auto',
             bgcolor: 'white',
             borderRadius: 3,
             boxShadow: '0 20px 40px rgba(15, 23, 42, 0.22)',
-            p: 2.5,
+            p: { xs: 2, sm: 2.5 },
             outline: 'none',
           }}
         >
@@ -77,8 +89,10 @@ const AddDealModal = ({ open, onClose, onSave }: AddDealModalProps) => {
             <Box
               sx={{
                 display: 'flex',
-                alignItems: 'center',
+                alignItems: { xs: 'flex-start', sm: 'center' },
                 justifyContent: 'space-between',
+                flexDirection: { xs: 'column', sm: 'row' },
+                gap: 1,
                 backgroundColor: '#f8fbff',
                 borderRadius: 2,
                 px: 1.5,
@@ -111,7 +125,13 @@ const AddDealModal = ({ open, onClose, onSave }: AddDealModalProps) => {
               <CustomButton
                 variant="outlined"
                 customColor="#94a3b8"
-                sx={{ borderRadius: 999, px: 2, textTransform: 'none', height: 28 }}
+                sx={{
+                  borderRadius: 999,
+                  px: 2,
+                  textTransform: 'none',
+                  height: 28,
+                  width: { xs: '100%', sm: 'auto' },
+                }}
                 onClick={() => setIsSelectCustomerOpen(true)}
               >
                 Change Customer
@@ -120,24 +140,74 @@ const AddDealModal = ({ open, onClose, onSave }: AddDealModalProps) => {
 
             <Box>
               <Typography sx={labelSx}>Room Images</Typography>
-              <Box component="label" sx={{ width: '100%' }}>
-                <CustomButton
-                  variant="outlined"
-                  customColor="#94a3b8"
+              <CustomButton
+                component="label"
+                variant="outlined"
+                customColor="#94a3b8"
+                sx={{
+                  mt: 1,
+                  height: 30,
+                  borderRadius: 2,
+                  px: 1.5,
+                  textTransform: 'uppercase',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  width: { xs: '100%', sm: 'auto' },
+                }}
+              >
+                Add
+                <Box
+                  component="input"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  capture="environment"
+                  sx={{ display: 'none' }}
+                  onClick={(event: React.MouseEvent<HTMLInputElement>) => {
+                    (event.target as HTMLInputElement).value = '';
+                  }}
+                  onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
+                    const files = Array.from(event.target.files ?? []);
+                    setRoomImages(files);
+                  }}
+                />
+              </CustomButton>
+              {roomImagePreviews.length > 0 && (
+                <Box
                   sx={{
-                    mt: 1,
-                    height: 30,
-                    borderRadius: 2,
-                    px: 1.5,
-                    textTransform: 'uppercase',
-                    fontSize: 11,
-                    fontWeight: 700,
+                    mt: 1.5,
+                    display: 'grid',
+                    gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' },
+                    gap: 1,
                   }}
                 >
-                  Add
-                </CustomButton>
-                <Box component="input" type="file" accept="image/*" multiple sx={{ display: 'none' }} />
-              </Box>
+                  {roomImagePreviews.map((src, index) => (
+                    <Box
+                      key={`${src}-${index}`}
+                      sx={{
+                        width: '100%',
+                        aspectRatio: '4 / 3',
+                        borderRadius: 2,
+                        border: `1px solid ${borderColor}`,
+                        overflow: 'hidden',
+                        backgroundColor: '#f1f5f9',
+                      }}
+                    >
+                      <Box
+                        component="img"
+                        src={src}
+                        alt={`Room image ${index + 1}`}
+                        sx={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          display: 'block',
+                        }}
+                      />
+                    </Box>
+                  ))}
+                </Box>
+              )}
             </Box>
 
             <Box>
@@ -145,13 +215,25 @@ const AddDealModal = ({ open, onClose, onSave }: AddDealModalProps) => {
               <Box component="input" sx={{ ...inputSx, mt: 1 }} placeholder="Street Address" />
             </Box>
 
-            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 1.5 }}>
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' },
+                gap: 1.5,
+              }}
+            >
               <Box component="input" sx={inputSx} placeholder="City" />
               <Box component="input" sx={inputSx} placeholder="State / Province" />
               <Box component="input" sx={inputSx} placeholder="Zip Code" />
             </Box>
 
-            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
+                gap: 1.5,
+              }}
+            >
               <Box>
                 <Typography sx={labelSx}>Room Area (m2)</Typography>
                 <Box component="input" sx={{ ...inputSx, mt: 1 }} placeholder="Area" />
@@ -177,7 +259,13 @@ const AddDealModal = ({ open, onClose, onSave }: AddDealModalProps) => {
               <Box component="input" sx={{ ...inputSx, mt: 1 }} placeholder="Instructions" />
             </Box>
 
-            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
+                gap: 1.5,
+              }}
+            >
               <Box>
                 <Typography sx={labelSx}>Room Access</Typography>
                 <Box component="select" sx={{ ...inputSx, mt: 1 }}>
@@ -195,25 +283,41 @@ const AddDealModal = ({ open, onClose, onSave }: AddDealModalProps) => {
             <Box
               sx={{
                 display: 'flex',
-                alignItems: 'center',
+                alignItems: { xs: 'flex-start', sm: 'center' },
                 justifyContent: 'space-between',
+                flexDirection: { xs: 'column', sm: 'row' },
                 gap: 1.5,
               }}
             >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: { xs: 'flex-start', sm: 'center' },
+                  flexDirection: { xs: 'column', sm: 'row' },
+                  gap: 1.5,
+                  width: { xs: '100%', sm: 'auto' },
+                }}
+              >
                 <Typography sx={labelSx}>Progress</Typography>
-                <Box component="select" sx={inputSx}>
+                <Box component="select" sx={{ ...inputSx, width: { xs: '100%', sm: 220 } }}>
                   <option>In Progress</option>
                   <option>Closed</option>
                   <option>On Hold</option>
                 </Box>
               </Box>
-              <Box sx={{ display: 'flex', gap: 1.5 }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  gap: 1.5,
+                  width: { xs: '100%', sm: 'auto' },
+                  flexDirection: { xs: 'column', sm: 'row' },
+                }}
+              >
                 <CustomButton
                   variant="text"
                   customColor="#64748b"
                   onClick={onClose}
-                  sx={{ textTransform: 'none', fontWeight: 600 }}
+                  sx={{ textTransform: 'none', fontWeight: 600, width: { xs: '100%', sm: 'auto' } }}
                 >
                   Cancel
                 </CustomButton>
@@ -225,6 +329,7 @@ const AddDealModal = ({ open, onClose, onSave }: AddDealModalProps) => {
                     px: 2.5,
                     textTransform: 'none',
                     fontWeight: 700,
+                    width: { xs: '100%', sm: 'auto' },
                   }}
                 >
                   Save Deal

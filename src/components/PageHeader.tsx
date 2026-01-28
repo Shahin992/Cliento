@@ -8,7 +8,16 @@ interface PageHeaderProps {
 }
 
 const PageHeader = ({ title, subtitle, action }: PageHeaderProps) => (
-  <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
+  <Box
+    sx={{
+      display: 'flex',
+      alignItems: { xs: 'flex-start', sm: 'center' },
+      justifyContent: 'space-between',
+      flexDirection: { xs: 'column', sm: 'row' },
+      gap: { xs: 1.5, sm: 2 },
+      mb: 3,
+    }}
+  >
     <Box>
       <Typography variant="h4" gutterBottom={Boolean(subtitle)}>
         {title}
@@ -19,7 +28,7 @@ const PageHeader = ({ title, subtitle, action }: PageHeaderProps) => (
         </Typography>
       ) : null}
     </Box>
-    {action ? <Box>{action}</Box> : null}
+    {action ? <Box sx={{ width: { xs: '100%', sm: 'auto' } }}>{action}</Box> : null}
   </Box>
 );
 

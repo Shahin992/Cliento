@@ -170,13 +170,27 @@ const ContactsPage = () => {
                     'minmax(230px, 2.2fr) minmax(190px, 1.8fr) minmax(140px, 1.2fr) minmax(250px, 2.4fr) 56px',
                   px: { xs: 1.5, sm: 2.5 },
                   py: { xs: 1.5, sm: 1.75 },
-                  gap: { xs: 1.25, sm: 0 },
+                  gap: { xs: 1.5, sm: 0 },
                   alignItems: { md: 'center' },
+                  borderRadius: { xs: 2, md: 0 },
+                  backgroundColor: { xs: '#f8fbff', md: 'transparent' },
                   borderBottom:
                     index === contacts.length - 1 ? 'none' : `1px solid ${borderColor}`,
+                  boxShadow: {
+                    xs: '0 10px 20px rgba(15, 23, 42, 0.08)',
+                    md: 'none',
+                  },
+                  border: { xs: `1px solid ${borderColor}`, md: 'none' },
+                  mb: { xs: 1.25, md: 0 },
                 }}
               >
-                <Stack direction="row" spacing={1.5} alignItems="center">
+                <Stack
+                  direction="row"
+                  spacing={1.5}
+                  alignItems="center"
+                  justifyContent="space-between"
+                >
+                  <Stack direction="row" spacing={1.5} alignItems="center">
                   <Avatar
                     sx={{
                       width: 36,
@@ -201,6 +215,21 @@ const ContactsPage = () => {
                   >
                     {contact.name}
                   </Typography>
+                  </Stack>
+                  <IconButton
+                    size="small"
+                    sx={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 999,
+                      border: `1px solid ${borderColor}`,
+                      color: '#64748b',
+                      backgroundColor: 'white',
+                      display: { xs: 'flex', md: 'none' },
+                    }}
+                  >
+                    <EditOutlined sx={{ fontSize: 16 }} />
+                  </IconButton>
                 </Stack>
 
                 <Box
@@ -272,6 +301,7 @@ const ContactsPage = () => {
                       border: `1px solid ${borderColor}`,
                       color: '#64748b',
                       backgroundColor: 'white',
+                      display: { xs: 'none', md: 'inline-flex' },
                     }}
                   >
                     <EditOutlined sx={{ fontSize: 16 }} />
