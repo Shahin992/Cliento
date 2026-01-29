@@ -1,6 +1,11 @@
 import { Box, Stack, Typography } from '@mui/material';
 import { Link } from 'react-router-dom';
-import { CreditCard, WorkspacePremiumOutlined } from '@mui/icons-material';
+import {
+  CreditCard,
+  ManageAccountsOutlined,
+  Person2Outlined,
+  WorkspacePremiumOutlined,
+} from '@mui/icons-material';
 
 import PageHeader from '../components/PageHeader';
 
@@ -19,10 +24,22 @@ const cardSx = {
 
 const settingsItems = [
   {
+    title: 'My Profile',
+    description: 'Update personal details, security, and preferences.',
+    to: '/profile',
+    icon: <Person2Outlined sx={{ width: 20, height: 20 }} />,
+  },
+  {
     title: 'Subscription',
     description: 'Manage plan tiers, billing cycle, and plan upgrades.',
     to: '/settings/subscription',
     icon: <WorkspacePremiumOutlined sx={{ width: 20, height: 20 }} />,
+  },
+  {
+    title: 'User Management',
+    description: 'Create users, set roles, and manage permissions.',
+    to: '/settings/users',
+    icon: <ManageAccountsOutlined sx={{ width: 20, height: 20 }} />,
   },
   {
     title: 'Billing',

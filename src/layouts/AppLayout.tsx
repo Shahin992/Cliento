@@ -8,7 +8,6 @@ import {
   SettingsOutlined,
   TaskAltOutlined,
   PeopleOutlined,
-  Person2Outlined,
 } from '@mui/icons-material';
 
 import Sidebar from './Sidebar';
@@ -24,7 +23,6 @@ const navItems = [
   { label: 'Contacts', to: '/contacts', icon: <PeopleOutlined sx={{ width: 20, height: 20 }} /> },
   { label: 'Tasks', to: '/tasks', icon: <TaskAltOutlined sx={{ width: 20, height: 20 }} /> },
   { label: 'Billing', to: '/billings', icon: <RequestQuote sx={{ width: 20, height: 20 }} /> },
-  { label: 'My Profile', to: '/profile', icon: <Person2Outlined sx={{ width: 20, height: 20 }} /> },
   { label: 'Settings', to: '/settings', icon: <SettingsOutlined sx={{ width: 20, height: 20 }} /> },
 ];
 
