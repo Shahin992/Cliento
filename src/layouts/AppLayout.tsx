@@ -21,7 +21,7 @@ const drawerWidth = 240;
 const collapsedWidth = 80;
 
 const navItems = [
-  { label: 'Dashboard', to: '/', icon: <Dashboard sx={{ width: 20, height: 20 }} /> },
+  { label: 'Dashboard', to: '/dashboard', icon: <Dashboard sx={{ width: 20, height: 20 }} /> },
   { label: 'Deals', to: '/deals', icon: <CurrencyExchange sx={{ width: 20, height: 20 }} /> },
   { label: 'Contacts', to: '/contacts', icon: <PeopleOutlined sx={{ width: 20, height: 20 }} /> },
   { label: 'Tasks', to: '/tasks', icon: <TaskAltOutlined sx={{ width: 20, height: 20 }} /> },

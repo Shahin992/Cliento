@@ -78,7 +78,7 @@ const SignInPage = () => (
           </Typography>
         </Stack>
 
-        <CustomButton variant="contained" customColor={accent} fullWidth component={Link} to="/">
+        <CustomButton variant="contained" customColor={accent} fullWidth component={Link} to="/dashboard">
           Sign in
         </CustomButton>
       </Stack>

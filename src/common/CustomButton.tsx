@@ -4,12 +4,13 @@ import { styled } from '@mui/material/styles';
 
 interface CustomButtonProps extends ButtonProps {
   customColor?: string;
+  customTextColor?: string;
   to?: string;
 }
 
 export const CustomButton = styled(Button, {
-  shouldForwardProp: (prop) => prop !== 'customColor',
-})<CustomButtonProps>(({ customColor = '#346fef' }) => ({
+  shouldForwardProp: (prop) => prop !== 'customColor' && prop !== 'customTextColor',
+})<CustomButtonProps>(({ customColor = '#346fef', customTextColor }) => ({
   fontWeight: 600,
   fontSize: '15px',
   textTransform: 'capitalize',
@@ -17,7 +18,7 @@ export const CustomButton = styled(Button, {
 
   '&.MuiButton-contained': {
     backgroundColor: `${customColor} !important`,
-    color: `#ffffff !important`,
+    color: `${customTextColor ?? '#ffffff'} !important`,
     '&:hover, &:focus, &:focus-visible': {
       backgroundColor: `${customColor} !important`,
       outline: "none",
@@ -30,7 +31,7 @@ export const CustomButton = styled(Button, {
 
   '&.MuiButton-outlined': {
     borderColor: `${customColor} !important`,
-    color: `${customColor} !important`,
+    color: `${customTextColor ?? customColor} !important`,
     backgroundColor: `transparent !important`,
     '&:hover, &:focus, &:focus-visible': {
       backgroundColor: `transparent !important`,

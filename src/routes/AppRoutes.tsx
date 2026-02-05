@@ -6,6 +6,7 @@ import ContactsPage from '../pages/ContactsPage';
 import DashboardPage from '../pages/DashboardPage';
 import DealsPage from '../pages/DealsPage';
 import DealDetailsPage from '../pages/DealDetailsPage';
+import LandingPage from '../pages/LandingPage';
 import ProfilePage from '../pages/ProfilePage';
 import ContactDetailsPage from '../pages/ContactDetailsPage';
 import TasksPage from '../pages/TasksPage';
@@ -20,12 +21,13 @@ import UserManagementPage from '../pages/UserManagementPage';
 
 const AppRoutes = () => (
   <Routes>
+    <Route path="/" element={<LandingPage />} />
     <Route path="/signin" element={<SignInPage />} />
     <Route path="/signup" element={<SignUpPage />} />
     <Route path="/forgot" element={<ForgotPasswordPage />} />
     <Route path="/reset" element={<ResetPasswordPage />} />
     <Route element={<AppLayout />}>
-      <Route path="/" element={<DashboardPage />} />
+      <Route path="/dashboard" element={<DashboardPage />} />
       <Route path="/deals" element={<DealsPage />} />
       <Route path="/deals/:dealId" element={<DealDetailsPage />} />
       <Route path="/contacts" element={<ContactsPage />} />
