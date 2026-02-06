@@ -107,7 +107,7 @@ const faqs = [
 ];
 
 const pricing = [
-  { name: 'Starter', price: '$12', detail: 'per user / month', cta: 'Start free' },
+  { name: 'Starter', price: '$12', detail: 'per user / month', cta: 'Get started' },
   { name: 'Growth', price: '$29', detail: 'per user / month', cta: 'Upgrade now' },
   { name: 'Scale', price: '$59', detail: 'per user / month', cta: 'Talk to sales' },
 ];
@@ -207,7 +207,12 @@ const LandingPage = () => {
       />
 
       <Container maxWidth="lg" sx={{ py: { xs: 3, md: 4 } }}>
-        <Stack direction="row" alignItems="center" justifyContent="space-between">
+        <Stack
+          direction="row"
+          spacing={0}
+          alignItems="center"
+          justifyContent="space-between"
+        >
           <Stack direction="row" spacing={1} alignItems="center">
             <Box
               component="img"
@@ -271,7 +276,13 @@ const LandingPage = () => {
           sx={{ py: { xs: 5, md: 8 } }}
           alignItems="center"
         >
-          <Box sx={{ flex: 1, animation: 'fadeIn 0.9s ease' }}>
+          <Box
+            sx={{
+              flex: 1,
+              animation: 'fadeIn 0.9s ease',
+              textAlign: { xs: 'center', lg: 'left' },
+            }}
+          >
             <Typography
               sx={{
                 fontSize: { xs: 40, md: 54 },
@@ -285,11 +296,23 @@ const LandingPage = () => {
                 built for momentum
               </Box>
             </Typography>
-            <Typography sx={{ mt: 2, fontSize: 18, color: '#52607a', maxWidth: 520 }}>
+            <Typography
+              sx={{
+                mt: 2,
+                fontSize: 18,
+                color: '#52607a',
+                maxWidth: 520,
+                mx: { xs: 'auto', lg: 0 },
+              }}
+            >
               Cliento combines pipeline clarity, customer context, and task focus so
               every follow-up is intentional and fast.
             </Typography>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mt: 3 }}>
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={2}
+              sx={{ mt: 3, justifyContent: { xs: 'center', lg: 'flex-start' } }}
+            >
               <CustomButton
                 variant="contained"
                 customColor={accent}
@@ -297,7 +320,7 @@ const LandingPage = () => {
                 to="/signup"
                 sx={{ borderRadius: 999, px: 3, textTransform: 'none', height: 44 }}
               >
-                Start free trial
+                Get started
               </CustomButton>
               <CustomButton
                 variant="outlined"
@@ -309,7 +332,15 @@ const LandingPage = () => {
                 View live demo
               </CustomButton>
             </Stack>
-            <Stack direction="row" spacing={3} sx={{ mt: 4, flexWrap: 'wrap' }}>
+            <Stack
+              direction="row"
+              spacing={3}
+              sx={{
+                mt: 4,
+                flexWrap: 'wrap',
+                justifyContent: { xs: 'center', lg: 'flex-start' },
+              }}
+            >
               {[
                 { label: 'Teams onboarded', value: '1,240+' },
                 { label: 'Deal velocity', value: '+34%' },
@@ -401,11 +432,22 @@ const LandingPage = () => {
     </Box>
 
     <Container maxWidth="lg" id="proof" sx={{ py: { xs: 5, md: 7 } }}>
-      <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} alignItems="center">
+      <Stack
+        direction={{ xs: 'column', md: 'row' }}
+        spacing={3}
+        alignItems="center"
+        textAlign={{ xs: 'center', md: 'left' }}
+      >
         <Typography sx={{ fontWeight: 700, color: '#64748b' }}>
           Trusted by modern revenue teams
         </Typography>
-        <Stack direction="row" spacing={2} flexWrap="wrap">
+        <Stack
+          direction="row"
+          spacing={2}
+          flexWrap="wrap"
+          justifyContent="center"
+          sx={{ rowGap: 2 }}
+        >
           {['Nova', 'Atlas', 'Stride', 'Helix', 'Arcadia', 'Linea'].map((brand) => (
             <Box
               key={brand}
@@ -731,7 +773,13 @@ const LandingPage = () => {
               Real results from teams who live in their pipeline.
             </Typography>
           </Box>
-          <Stack direction="row" spacing={1.5} alignItems="center">
+          <Stack
+            direction="row"
+            spacing={1.5}
+            alignItems="center"
+            flexWrap="wrap"
+            justifyContent={{ xs: 'flex-start', md: 'flex-end' }}
+          >
             {['4.9/5 G2', '98% retention'].map((chip) => (
               <Box
                 key={chip}
@@ -766,6 +814,7 @@ const LandingPage = () => {
               border: '1px solid #e2e8f0',
               backgroundColor: 'white',
               zIndex: 2,
+              display: { xs: 'none', md: 'inline-flex' },
             }}
             onClick={handlePrevTestimonial}
             aria-label="Previous testimonials"
@@ -786,6 +835,7 @@ const LandingPage = () => {
               border: '1px solid #e2e8f0',
               backgroundColor: 'white',
               zIndex: 2,
+              display: { xs: 'none', md: 'inline-flex' },
             }}
             onClick={handleNextTestimonial}
             aria-label="Next testimonials"
@@ -1068,12 +1118,12 @@ const LandingPage = () => {
           alignItems={{ md: 'center' }}
           justifyContent="space-between"
         >
-          <Box>
+          <Box sx={{ textAlign: { xs: 'center', md: 'left' } }}>
             <Typography sx={{ fontWeight: 800, fontSize: 28 }}>
               Ready to organize every deal?
             </Typography>
             <Typography sx={{ opacity: 0.9, mt: 1 }}>
-              Start free and give your pipeline a workspace it deserves.
+              Start quickly and give your pipeline a workspace it deserves.
             </Typography>
           </Box>
           <CustomButton
@@ -1086,6 +1136,7 @@ const LandingPage = () => {
               borderRadius: 999,
               px: 3,
               textTransform: 'none',
+              alignSelf: { xs: 'center', md: 'auto' },
             }}
           >
             Create your workspace
@@ -1101,8 +1152,23 @@ const LandingPage = () => {
           spacing={2}
           alignItems={{ md: 'center' }}
           justifyContent="space-between"
+          textAlign={{ xs: 'center', md: 'left' }}
         >
-          <Typography sx={{ fontWeight: 700 }}>Cliento CRM</Typography>
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            justifyContent={{ xs: 'center', md: 'flex-start' }}
+            sx={{ width: { xs: '100%', md: 'auto' } }}
+          >
+            <Box
+              component="img"
+              src="/Cliento-small.png"
+              alt="Cliento logo"
+              sx={{ height: 28, width: 'auto' }}
+            />
+            <Typography sx={{ fontWeight: 700 }}>Cliento</Typography>
+          </Stack>
           <Typography variant="caption" sx={{ opacity: 0.7 }}>
             © 2026 Cliento. All rights reserved.
           </Typography>
