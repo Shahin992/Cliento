@@ -18,12 +18,16 @@ import SignUpPage from '../pages/SignUpPage';
 import ForgotPasswordPage from '../pages/ForgotPasswordPage';
 import ResetPasswordPage from '../pages/ResetPasswordPage';
 import UserManagementPage from '../pages/UserManagementPage';
+import WelcomePage from '../pages/WelcomePage';
+import PaymentSuccessPage from '../pages/PaymentSuccessPage';
 
 const AppRoutes = () => (
   <Routes>
     <Route path="/" element={<LandingPage />} />
     <Route path="/signin" element={<SignInPage />} />
     <Route path="/signup" element={<SignUpPage />} />
+    <Route path="/welcome" element={<WelcomePage />} />
+    <Route path="/payment/success" element={<PaymentSuccessPage />} />
     <Route path="/forgot" element={<ForgotPasswordPage />} />
     <Route path="/reset" element={<ResetPasswordPage />} />
     <Route element={<AppLayout />}>

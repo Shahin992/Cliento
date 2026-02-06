@@ -1,50 +1,53 @@
 import { Box, Checkbox, FormControlLabel, Stack, Typography } from '@mui/material';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 import BasicInput from '../common/BasicInput';
 import { CustomButton } from '../common/CustomButton';
 
 const accent = '#346fef';
 
-const SignUpPage = () => (
-  <Box
-    sx={{
-      minHeight: '100vh',
-      width: '100%',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      px: 2,
-      py: 4,
-      bgcolor: '#f3f6fb',
-    }}
-  >
+const SignUpPage = () => {
+  const navigate = useNavigate();
+
+  return (
     <Box
       sx={{
+        minHeight: '100vh',
         width: '100%',
-        maxWidth: 460,
-        bgcolor: 'white',
-        borderRadius: 3,
-        boxShadow: '0 18px 40px rgba(15, 23, 42, 0.12)',
-        p: { xs: 3, sm: 4 },
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        px: 2,
+        py: 4,
+        bgcolor: '#f3f6fb',
       }}
     >
-      <Stack spacing={2} alignItems="center">
-        <Box
-          component="img"
-          src="/Cliento-logo.png"
-          alt="Cliento logo"
-          sx={{ width: 150, height: 'auto' }}
-        />
-        <Box textAlign="center">
-          <Typography variant="h5" sx={{ fontWeight: 700, color: '#0f172a' }}>
-            Create account
-          </Typography>
-          <Typography sx={{ color: '#6b7280' }}>
-            Start with a secure workspace in minutes.
-          </Typography>
-        </Box>
-      </Stack>
+      <Box
+        sx={{
+          width: '100%',
+          maxWidth: 460,
+          bgcolor: 'white',
+          borderRadius: 3,
+          boxShadow: '0 18px 40px rgba(15, 23, 42, 0.12)',
+          p: { xs: 3, sm: 4 },
+        }}
+      >
+        <Stack spacing={2} alignItems="center">
+          <Box
+            component="img"
+            src="/Cliento-logo.png"
+            alt="Cliento logo"
+            sx={{ width: 150, height: 'auto' }}
+          />
+          <Box textAlign="center">
+            <Typography variant="h5" sx={{ fontWeight: 700, color: '#0f172a' }}>
+              Create account
+            </Typography>
+            <Typography sx={{ color: '#6b7280' }}>
+              Start with a secure workspace in minutes.
+            </Typography>
+          </Box>
+        </Stack>
 
       <Stack spacing={2.5} sx={{ mt: 3 }}>
         <Box>
@@ -73,7 +76,12 @@ const SignUpPage = () => (
           sx={{ alignItems: 'flex-start' }}
         />
 
-        <CustomButton variant="contained" customColor={accent} fullWidth>
+        <CustomButton
+          variant="contained"
+          customColor={accent}
+          fullWidth
+          onClick={() => navigate('/settings/subscription')}
+        >
           Create account
         </CustomButton>
 
@@ -88,8 +96,9 @@ const SignUpPage = () => (
           Sign in
         </Box>
       </Typography>
+      </Box>
     </Box>
-  </Box>
-);
+  );
+};
 
 export default SignUpPage;

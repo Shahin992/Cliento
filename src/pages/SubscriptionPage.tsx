@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 
 import PageHeader from '../components/PageHeader';
 import { CustomButton } from '../common/CustomButton';
+import { startStripeCheckout } from '../lib/stripeCheckout';
 
 const borderColor = '#e7edf6';
 const mutedText = '#8b95a7';
@@ -48,6 +49,9 @@ const plans = [
 
 const SubscriptionPage = () => {
   const [selectedPlanId, setSelectedPlanId] = useState('small-team');
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const isStripeMock = import.meta.env.VITE_STRIPE_MOCK === 'true';
 
   const selectedPlan = useMemo(
     () => plans.find((plan) => plan.id === selectedPlanId) ?? plans[1],
@@ -55,6 +59,24 @@ const SubscriptionPage = () => {
   );
 
   const currentPrice = selectedPlan.monthly;
+  const handleCheckout = async () => {
+    setCheckoutError(null);
+    setCheckoutLoading(true);
+    try {
+      await startStripeCheckout({
+        planId: selectedPlan.id,
+        quantity: 1,
+        successPath: '/payment/success',
+        cancelPath: '/settings/subscription?status=cancel',
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Unable to start checkout';
+      setCheckoutError(message);
+    } finally {
+      setCheckoutLoading(false);
+    }
+  };
 
   return (
     <Box
@@ -212,9 +234,39 @@ const SubscriptionPage = () => {
           <CustomButton
             variant="contained"
             sx={{ borderRadius: 999, px: 2.5, textTransform: 'none' }}
+            onClick={handleCheckout}
+            disabled={checkoutLoading}
           >
-            Continue with {selectedPlan.name}
+            {checkoutLoading ? 'Opening Stripe...' : `Pay with Stripe (test)`}
           </CustomButton>
+        </Stack>
+      </Box>
+
+      <Box
+        sx={{
+          ...cardSx,
+          borderColor: '#f59e0b',
+          backgroundColor: '#fff7ed',
+          color: '#7c2d12',
+        }}
+      >
+        <Stack spacing={1}>
+          <Typography sx={{ fontWeight: 700 }}>
+            Payment required to activate your subscription
+          </Typography>
+          <Typography sx={{ color: '#9a3412' }}>
+            Use Stripe test mode to complete checkout for {selectedPlan.name}.
+          </Typography>
+          {isStripeMock ? (
+            <Typography sx={{ color: '#a16207', fontWeight: 600 }}>
+              Stripe mock mode enabled (frontend only).
+            </Typography>
+          ) : null}
+          {checkoutError ? (
+            <Typography sx={{ color: '#b91c1c', fontWeight: 600 }}>
+              {checkoutError}
+            </Typography>
+          ) : null}
         </Stack>
       </Box>
     </Box>

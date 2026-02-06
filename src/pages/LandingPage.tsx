@@ -13,6 +13,7 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CustomButton } from '../common/CustomButton';
 import { CustomIconButton as IconButton } from '../common/CustomIconButton';
+import { startStripeCheckout } from '../lib/stripeCheckout';
 
 const ink = '#0b1220';
 const accent = '#1f6feb';
@@ -114,6 +115,9 @@ const pricing = [
 const LandingPage = () => {
   const [testimonialIndex, setTestimonialIndex] = useState(0);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
+  const [checkoutPlanId, setCheckoutPlanId] = useState<string | null>(null);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const isStripeMock = import.meta.env.VITE_STRIPE_MOCK === 'true';
   const visibleTestimonials = useMemo(() => {
     const itemsPerView = 3;
     return Array.from({ length: itemsPerView }, (_, i) =>
@@ -129,6 +133,25 @@ const LandingPage = () => {
 
   const handleNextTestimonial = () => {
     setTestimonialIndex((prev) => (prev + 1) % testimonials.length);
+  };
+
+  const handlePricingCheckout = async (planName: string) => {
+    setCheckoutError(null);
+    setCheckoutPlanId(planName);
+    try {
+      await startStripeCheckout({
+        planId: planName.toLowerCase(),
+        quantity: 1,
+        successPath: '/payment/success',
+        cancelPath: '/?status=cancel',
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Unable to start checkout';
+      setCheckoutError(message);
+    } finally {
+      setCheckoutPlanId(null);
+    }
   };
 
   return (
@@ -584,6 +607,7 @@ const LandingPage = () => {
         >
           {pricing.map((plan, index) => {
             const isFeatured = plan.name === 'Growth';
+            const isLoading = checkoutPlanId === plan.name;
             return (
               <Box
                 key={plan.name}
@@ -653,20 +677,34 @@ const LandingPage = () => {
                   variant={isFeatured ? 'contained' : 'outlined'}
                   customColor={isFeatured ? '#ffffff' : accent}
                   customTextColor={isFeatured ? '#0f172a' : undefined}
-                  component={Link}
-                  to="/signup"
+                  onClick={() => handlePricingCheckout(plan.name)}
+                  disabled={isLoading}
                   sx={{
                     borderRadius: 999,
                     mt: 3,
                     textTransform: 'none',
                   }}
                 >
-                  {plan.cta}
+                  {isLoading ? 'Opening Stripe...' : 'Pay with Stripe (test)'}
                 </CustomButton>
               </Box>
             );
           })}
         </Box>
+        {checkoutError ? (
+          <Box sx={{ mt: 3 }}>
+            <Typography sx={{ color: '#b91c1c', fontWeight: 600 }}>
+              {checkoutError}
+            </Typography>
+          </Box>
+        ) : null}
+        {isStripeMock ? (
+          <Box sx={{ mt: 2 }}>
+            <Typography sx={{ color: '#64748b', fontWeight: 600 }}>
+              Stripe mock mode enabled (frontend only).
+            </Typography>
+          </Box>
+        ) : null}
       </Container>
     </Box>
 
