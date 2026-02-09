@@ -7,19 +7,27 @@ import BasicInput from '../common/BasicInput';
 import { CustomButton } from '../common/CustomButton';
 import { signUp } from '../services/auth';
 import type { SignUpPayload } from '../types/auth';
+import { useToast } from '../common/ToastProvider';
 
 const accent = '#346fef';
 
 const SignUpPage = () => {
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const [form, setForm] = useState({
     fullName: '',
     email: '',
     companyName: '',
     phoneNumber: '',
   });
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{
+    fullName?: string;
+    email?: string;
+    companyName?: string;
+    phoneNumber?: string;
+  }>({});
   
   const handleChange =
     (field: keyof typeof form) => (event: ChangeEvent<HTMLInputElement>) => {
@@ -28,6 +36,42 @@ const SignUpPage = () => {
 
   const isValidEmail = (value: string) => /\S+@\S+\.\S+/.test(value);
   const isValidE164Phone = (value: string) => /^\+[1-9]\d{7,14}$/.test(value);
+  const validateSignUp = (payload: SignUpPayload) => {
+    const errors: {
+      fullName?: string;
+      email?: string;
+      companyName?: string;
+      phoneNumber?: string;
+    } = {};
+
+    if (!payload.fullName) {
+      errors.fullName = 'Full name is required.';
+    } else if (payload.fullName.length > 30) {
+      errors.fullName = 'Full name must be 30 characters or less.';
+    }
+
+    if (!payload.email) {
+      errors.email = 'Email is required.';
+    } else if (payload.email.length > 50) {
+      errors.email = 'Email must be 50 characters or less.';
+    } else if (!isValidEmail(payload.email)) {
+      errors.email = 'Please enter a valid email address.';
+    }
+
+    if (!payload.companyName) {
+      errors.companyName = 'Company name is required.';
+    } else if (payload.companyName.length > 30) {
+      errors.companyName = 'Company name must be 30 characters or less.';
+    }
+
+    if (!payload.phoneNumber) {
+      errors.phoneNumber = 'Phone number is required.';
+    } else if (!isValidE164Phone(payload.phoneNumber)) {
+      errors.phoneNumber = 'Phone number must be in E.164 format (e.g. +14155552671).';
+    }
+
+    return errors;
+  };
   const normalizePhoneToE164 = (value: string) => {
     let cleaned = value.replace(/[^\d+]/g, '');
 
@@ -50,7 +94,7 @@ const SignUpPage = () => {
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setError(null);
+    setFieldErrors({});
    
     const payload: SignUpPayload = {
       fullName: form.fullName.trim(),
@@ -59,16 +103,14 @@ const SignUpPage = () => {
       phoneNumber: form.phoneNumber.trim(),
     };
 
-    if (!payload.fullName || !payload.email || !payload.companyName || !payload.phoneNumber) {
-      setError('Please fill out all required fields.');
+    if (!termsAccepted) {
+      showToast({ message: 'Please accept the Terms & Privacy Policy to continue.', severity: 'warning' });
       return;
     }
-    if (!isValidEmail(payload.email)) {
-      setError('Please enter a valid email address.');
-      return;
-    }
-    if (!isValidE164Phone(payload.phoneNumber)) {
-      setError('Phone number must be in E.164 format (e.g. +14155552671).');
+
+    const errors = validateSignUp(payload);
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
       return;
     }
 
@@ -77,7 +119,10 @@ const SignUpPage = () => {
     setSubmitting(false);
 
     if (!response.success) {
-      setError(response.details || response.message || 'Signup failed. Please try again.');
+      showToast({
+        message: response.details || response.message || 'Signup failed. Please try again.',
+        severity: 'error',
+      });
       return;
     }
 
@@ -133,8 +178,13 @@ const SignUpPage = () => {
               placeholder="Alex Johnson"
               value={form.fullName}
               onChange={handleChange('fullName')}
-              inputProps={{ 'aria-label': 'Full name' }}
+              inputProps={{ 'aria-label': 'Full name', maxLength: 30 }}
             />
+            {fieldErrors.fullName ? (
+              <Typography variant="body2" sx={{ color: '#dc2626', mt: 0.5 }}>
+                {fieldErrors.fullName}
+              </Typography>
+            ) : null}
           </Box>
           <Box>
             <Typography sx={{ fontWeight: 600, mb: 0.5 }}>Email</Typography>
@@ -144,8 +194,13 @@ const SignUpPage = () => {
               type="email"
               value={form.email}
               onChange={handleChange('email')}
-              inputProps={{ 'aria-label': 'Email' }}
+              inputProps={{ 'aria-label': 'Email', maxLength: 50 }}
             />
+            {fieldErrors.email ? (
+              <Typography variant="body2" sx={{ color: '#dc2626', mt: 0.5 }}>
+                {fieldErrors.email}
+              </Typography>
+            ) : null}
           </Box>
           <Box>
             <Typography sx={{ fontWeight: 600, mb: 0.5 }}>Company name</Typography>
@@ -154,8 +209,13 @@ const SignUpPage = () => {
               placeholder="Cliento Inc."
               value={form.companyName}
               onChange={handleChange('companyName')}
-              inputProps={{ 'aria-label': 'Company name' }}
+              inputProps={{ 'aria-label': 'Company name', maxLength: 30 }}
             />
+            {fieldErrors.companyName ? (
+              <Typography variant="body2" sx={{ color: '#dc2626', mt: 0.5 }}>
+                {fieldErrors.companyName}
+              </Typography>
+            ) : null}
           </Box>
           <Box>
             <Typography sx={{ fontWeight: 600, mb: 0.5 }}>Phone number</Typography>
@@ -209,9 +269,20 @@ const SignUpPage = () => {
                 },
               }}
             />
+            {fieldErrors.phoneNumber ? (
+              <Typography variant="body2" sx={{ color: '#dc2626', mt: 0.5 }}>
+                {fieldErrors.phoneNumber}
+              </Typography>
+            ) : null}
           </Box>
           <FormControlLabel
-            control={<Checkbox sx={{ color: accent, '&.Mui-checked': { color: accent } }} />}
+            control={
+              <Checkbox
+                checked={termsAccepted}
+                onChange={(event) => setTermsAccepted(event.target.checked)}
+                sx={{ color: accent, '&.Mui-checked': { color: accent } }}
+              />
+            }
             label="I agree to the Terms of Service and Privacy Policy."
             sx={{
               width: '100%',
@@ -233,16 +304,6 @@ const SignUpPage = () => {
           >
             {submitting ? 'Creating account...' : 'Create account'}
           </CustomButton>
-
-          {error ? (
-            <Typography variant="body2" sx={{ color: '#dc2626', textAlign: 'left' }}>
-              {error}
-            </Typography>
-          ) : null}
-
-          <Typography variant="body2" sx={{ color: '#6b7280', textAlign: 'center' }}>
-            Use a work email so your team can find you faster.
-          </Typography>
           </Stack>
         </Box>
 

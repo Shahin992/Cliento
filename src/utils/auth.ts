@@ -30,6 +30,10 @@ export const setCookie = (name: string, value: string, options: CookieOptions = 
   document.cookie = `${name}=${value}; Expires=${expires}; Path=${path}${secure}${sameSite}`;
 };
 
+export const removeCookie = (name: string, path = '/') => {
+  document.cookie = `${name}=; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=${path}`;
+};
+
 export const getCookie = (name: string) => {
   const cookies = document.cookie ? document.cookie.split('; ') : [];
   const prefix = `${name}=`;

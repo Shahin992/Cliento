@@ -20,6 +20,7 @@ import ResetPasswordPage from '../pages/ResetPasswordPage';
 import UserManagementPage from '../pages/UserManagementPage';
 import WelcomePage from '../pages/WelcomePage';
 import PaymentSuccessPage from '../pages/PaymentSuccessPage';
+import RequireAuth from './RequireAuth';
 
 const AppRoutes = () => (
   <Routes>
@@ -30,7 +31,8 @@ const AppRoutes = () => (
     <Route path="/payment/success" element={<PaymentSuccessPage />} />
     <Route path="/forgot" element={<ForgotPasswordPage />} />
     <Route path="/reset" element={<ResetPasswordPage />} />
-    <Route element={<AppLayout />}>
+    <Route element={<RequireAuth />}>
+      <Route element={<AppLayout />}>
       <Route path="/dashboard" element={<DashboardPage />} />
       <Route path="/deals" element={<DealsPage />} />
       <Route path="/deals/:dealId" element={<DealDetailsPage />} />
@@ -43,6 +45,7 @@ const AppRoutes = () => (
       <Route path="/settings/users" element={<UserManagementPage />} />
       <Route path="/settings/subscription" element={<SubscriptionPage />} />
       <Route path="/settings/subscription/create" element={<CreatePlanPage />} />
+      </Route>
     </Route>
   </Routes>
 );

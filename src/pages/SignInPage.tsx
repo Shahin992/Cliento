@@ -1,6 +1,7 @@
-import { Box, Checkbox, FormControlLabel, Stack, Typography } from '@mui/material';
+import { Box, Checkbox, FormControlLabel, IconButton, InputAdornment, Stack, Typography } from '@mui/material';
 import { useState, type ChangeEvent, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Visibility, VisibilityOff } from '@mui/icons-material';
 
 import BasicInput from '../common/BasicInput';
 import { CustomButton } from '../common/CustomButton';
@@ -10,15 +11,18 @@ import { encodeBase64, setCookie } from '../utils/auth';
 import { useAppDispatch } from '../app/hooks';
 import { setAuth } from '../features/auth/authSlice';
 import type { User } from '../types/user';
+import { useToast } from '../common/ToastProvider';
 
 const accent = '#346fef';
 
 const SignInPage = () => {
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const dispatch = useAppDispatch();
   const [form, setForm] = useState({ email: '', password: '' });
+  const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
 
   const handleChange =
     (field: keyof typeof form) => (event: ChangeEvent<HTMLInputElement>) => {
@@ -29,7 +33,7 @@ const SignInPage = () => {
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setError(null);
+    setFieldErrors({});
 
     const payload: SignInPayload = {
       email: form.email.trim(),
@@ -37,12 +41,20 @@ const SignInPage = () => {
     };
 
     if (!payload.email || !payload.password) {
-      setError('Please enter your email and password.');
+      setFieldErrors({
+        email: !payload.email ? 'Email is required.' : undefined,
+        password: !payload.password ? 'Password is required.' : undefined,
+      });
       return;
     }
 
     if (!isValidEmail(payload.email)) {
-      setError('Please enter a valid email address.');
+      setFieldErrors({ email: 'Please enter a valid email address.' });
+      return;
+    }
+
+    if (payload.password.length < 6) {
+      setFieldErrors({ password: 'Password must be at least 6 characters.' });
       return;
     }
 
@@ -51,7 +63,10 @@ const SignInPage = () => {
     setSubmitting(false);
 
     if (!response.success) {
-      setError(response.details || response.message || 'Sign in failed. Please try again.');
+      showToast({
+        message: response.details || response.message || 'Sign in failed. Please try again.',
+        severity: 'error',
+      });
       return;
     }
 
@@ -128,24 +143,47 @@ const SignInPage = () => {
                 onChange={handleChange('email')}
                 inputProps={{ 'aria-label': 'Email' }}
               />
+              {fieldErrors.email ? (
+                <Typography variant="body2" sx={{ color: '#dc2626', mt: 0.5 }}>
+                  {fieldErrors.email}
+                </Typography>
+              ) : null}
             </Box>
             <Box>
               <Typography sx={{ fontWeight: 600, mb: 0.5 }}>Password</Typography>
               <BasicInput
                 fullWidth
                 placeholder="••••••••"
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={form.password}
                 onChange={handleChange('password')}
                 inputProps={{ 'aria-label': 'Password' }}
+                endAdornment={
+                  <InputAdornment position="end">
+                    <IconButton
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      edge="end"
+                      size="small"
+                      sx={{ color: '#6b7280' }}
+                    >
+                      {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                    </IconButton>
+                  </InputAdornment>
+                }
               />
+              {fieldErrors.password ? (
+                <Typography variant="body2" sx={{ color: '#dc2626', mt: 0.5 }}>
+                  {fieldErrors.password}
+                </Typography>
+              ) : null}
             </Box>
 
             <Stack direction="row" alignItems="center" justifyContent="space-between">
-              <FormControlLabel
+              {/* <FormControlLabel
                 control={<Checkbox sx={{ color: accent, '&.Mui-checked': { color: accent } }} />}
                 label="Keep me signed in"
-              />
+              /> */}
               <Typography
                 component={Link}
                 to="/forgot"
@@ -162,12 +200,6 @@ const SignInPage = () => {
                 Forgot password?
               </Typography>
             </Stack>
-
-            {error ? (
-              <Typography variant="body2" sx={{ color: '#dc2626', textAlign: 'left' }}>
-                {error}
-              </Typography>
-            ) : null}
 
             <CustomButton
               variant="contained"

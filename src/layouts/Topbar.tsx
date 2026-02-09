@@ -22,11 +22,14 @@ import {
   Search,
   VpnKey,
 } from '@mui/icons-material';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 import BasicInput from '../common/BasicInput';
 import { CustomButton } from '../common/CustomButton';
 import { useAppSelector } from '../app/hooks';
+import { useAppDispatch } from '../app/hooks';
+import { clearAuth } from '../features/auth/authSlice';
+import { removeCookie } from '../utils/auth';
 
 interface TopbarProps {
   isMobile: boolean;
@@ -45,6 +48,8 @@ const Topbar = ({
   onOpenAddDeal,
   onOpenAddContact,
 }: TopbarProps) => {
+  const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
@@ -79,6 +84,14 @@ const Topbar = ({
   const handleAddContact = () => {
     handleAddMenuClose();
     onOpenAddContact();
+  };
+
+  const handleLogout = () => {
+    removeCookie('cliento_token');
+    removeCookie('cliento_user');
+    dispatch(clearAuth());
+    handleClose();
+    navigate('/signin');
   };
 
   const displayName = user?.fullName ?? 'Cliento Admin';
@@ -424,7 +437,7 @@ const Topbar = ({
 
                 <Divider sx={{ my: 1 }} />
 
-                <MenuItem onClick={handleMenuItemClick} sx={{ px: 3, py: 2, color: '#d32f2f' }}>
+                <MenuItem onClick={handleLogout} sx={{ px: 3, py: 2, color: '#d32f2f' }}>
                   <Logout sx={{ mr: 2 }} />
                   <Typography variant="body1" sx={{ fontWeight: 500 }}>
                     Logout
