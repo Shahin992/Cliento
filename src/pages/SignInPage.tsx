@@ -1,4 +1,4 @@
-import { Box, Checkbox, FormControlLabel, IconButton, InputAdornment, Stack, Typography } from '@mui/material';
+import { Box, IconButton, InputAdornment, Stack, Typography } from '@mui/material';
 import { useState, type ChangeEvent, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
