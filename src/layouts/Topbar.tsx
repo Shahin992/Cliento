@@ -26,6 +26,7 @@ import { Link } from 'react-router-dom';
 
 import BasicInput from '../common/BasicInput';
 import { CustomButton } from '../common/CustomButton';
+import { useAppSelector } from '../app/hooks';
 
 interface TopbarProps {
   isMobile: boolean;
@@ -44,6 +45,7 @@ const Topbar = ({
   onOpenAddDeal,
   onOpenAddContact,
 }: TopbarProps) => {
+  const user = useAppSelector((state) => state.auth.user);
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
   const [addMenuAnchorEl, setAddMenuAnchorEl] = React.useState<null | HTMLElement>(null);
@@ -78,6 +80,16 @@ const Topbar = ({
     handleAddMenuClose();
     onOpenAddContact();
   };
+
+  const displayName = user?.fullName ?? 'Cliento Admin';
+  const displayEmail = user?.email ?? 'cliento@gmail.com';
+  const initials =
+    displayName
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join('') || 'CA';
 
   return (
     <AppBar
@@ -294,16 +306,21 @@ const Topbar = ({
                   aria-haspopup="true"
                   aria-expanded={open ? 'true' : undefined}
                 >
-                  <Avatar sx={{ bgcolor: '#6f42c1', width: 36, height: 36 }}>CA</Avatar>
+                  <Avatar
+                    sx={{ bgcolor: '#6f42c1', width: 36, height: 36 }}
+                    src={user?.profilePhoto ?? undefined}
+                  >
+                    {initials}
+                  </Avatar>
                   <Box>
                     <Typography
                       variant="body1"
                       sx={{ fontWeight: 600, lineHeight: 1.2, color: '#333' }}
                     >
-                      Cliento Admin
+                      {displayName}
                     </Typography>
                     <Typography variant="body2" sx={{ color: '#666', fontSize: '0.875rem' }}>
-                      cliento@gmail.com
+                      {displayEmail}
                     </Typography>
                   </Box>
                 </Box>
@@ -336,7 +353,9 @@ const Topbar = ({
                   aria-expanded={open ? 'true' : undefined}
 
                 >
-                  <Avatar sx={{ width: 34, height: 34 }} />
+                  <Avatar sx={{ width: 34, height: 34 }} src={user?.profilePhoto ?? undefined}>
+                    {initials}
+                  </Avatar>
                 </IconButton>
               )}
               <Menu
