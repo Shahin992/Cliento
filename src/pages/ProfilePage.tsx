@@ -4,8 +4,10 @@ import { Box } from '@mui/material';
 import PageHeader from '../components/PageHeader';
 import ProfileOverviewCard from '../components/profile/ProfileOverviewCard';
 import AccountDetailsSection from '../components/profile/AccountDetailsSection';
-import type { ProfileState } from '../components/profile/types';
+import ChangePasswordSection from '../components/profile/ChangePasswordSection';
+import type { PasswordState, ProfileState } from '../components/profile/types';
 import { http } from '../services/api';
+import { changePassword } from '../services/auth';
 import { updateProfileDetails } from '../services/profile';
 import { uploadPhoto } from '../services/upload';
 import { decodeBase64, encodeBase64, getCookie, setCookie } from '../utils/auth';
@@ -32,14 +34,9 @@ const buildProfileState = (user: ProfileState | null): ProfileState => ({
   companyName: user?.companyName ?? '',
   email: user?.email ?? '',
   phoneNumber: user?.phoneNumber ?? '',
-  role: user?.role ?? '',
-  teamId: user?.teamId ?? 0,
-  ownerInfo: user?.ownerInfo ?? null,
   profilePhoto: user?.profilePhoto ?? null,
   location: user?.location ?? null,
   timeZone: user?.timeZone ?? null,
-  accessExpiresAt: user?.accessExpiresAt ?? null,
-  planType: user?.planType ?? '',
   createdAt: user?.createdAt ?? '',
   updatedAt: user?.updatedAt ?? '',
 });
@@ -57,6 +54,15 @@ const ProfilePage = () => {
 
   const [isAvatarUploading, setIsAvatarUploading] = useState(false);
   const [isProfileUpdating, setIsProfileUpdating] = useState(false);
+  const [isPasswordUpdating, setIsPasswordUpdating] = useState(false);
+  const [passwords, setPasswords] = useState<PasswordState>({
+    current: '',
+    next: '',
+    confirm: '',
+  });
+  const [passwordErrors, setPasswordErrors] = useState<
+    Partial<Record<keyof PasswordState, string>>
+  >({});
 
   const [isAccountEditing, setIsAccountEditing] = useState(false);
   const [accountDraft, setAccountDraft] = useState<AccountDraft>(() =>
@@ -288,6 +294,74 @@ const ProfilePage = () => {
           }}
         />
       </Box>
+
+      <ChangePasswordSection
+        passwords={passwords}
+        isSaving={isPasswordUpdating}
+        isDisabled={
+          !passwords.current.trim() || !passwords.next.trim() || !passwords.confirm.trim()
+        }
+        errors={passwordErrors}
+        onChange={(field, value) =>
+          setPasswords((prev) => ({ ...prev, [field]: value }))
+        }
+        onSave={() => {
+          if (isPasswordUpdating) return;
+          const trimmed = {
+            current: passwords.current.trim(),
+            next: passwords.next.trim(),
+            confirm: passwords.confirm.trim(),
+          };
+
+          const nextErrors: Partial<Record<keyof PasswordState, string>> = {};
+          if (trimmed.current.length < 6) {
+            nextErrors.current = 'Must be at least 6 characters.';
+          }
+          if (trimmed.next.length < 6) {
+            nextErrors.next = 'Must be at least 6 characters.';
+          }
+          if (trimmed.confirm.length < 6) {
+            nextErrors.confirm = 'Must be at least 6 characters.';
+          }
+          if (trimmed.next && trimmed.confirm && trimmed.next !== trimmed.confirm) {
+            nextErrors.confirm = 'Passwords do not match.';
+          }
+
+          setPasswordErrors(nextErrors);
+          if (Object.keys(nextErrors).length > 0) {
+            return;
+          }
+
+          const applyPasswordChange = async () => {
+            setIsPasswordUpdating(true);
+            try {
+              const response = await changePassword({
+                currentPassword: trimmed.current,
+                newPassword: trimmed.next,
+              });
+              if (response.success) {
+                showToast({ message: 'Password updated successfully.', severity: 'success' });
+                setPasswords({ current: '', next: '', confirm: '' });
+              } else {
+                showToast({
+                  message: response.message || 'Failed to update password.',
+                  severity: 'error',
+                });
+              }
+            } catch (error) {
+              showToast({
+                message:
+                  error instanceof Error ? error.message : 'Failed to update password.',
+                severity: 'error',
+              });
+            } finally {
+              setIsPasswordUpdating(false);
+            }
+          };
+
+          void applyPasswordChange();
+        }}
+      />
 
     </Box>
   );

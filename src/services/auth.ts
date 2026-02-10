@@ -21,3 +21,11 @@ export const verifyOtp = (payload: VerifyOtpPayload) =>
 
 export const resetPassword = (payload: ResetPasswordPayload) =>
   http.post<unknown, ResetPasswordPayload>('/api/auth/reset-password', payload);
+
+export type ChangePasswordPayload = {
+  currentPassword: string;
+  newPassword: string;
+};
+
+export const changePassword = (payload: ChangePasswordPayload) =>
+  http.post<unknown, ChangePasswordPayload>('/api/auth/change-password', payload);
