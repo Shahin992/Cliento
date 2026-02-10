@@ -1,25 +1,16 @@
 export type ProfileState = {
-  firstName: string;
-  lastName: string;
-  title: string;
+  fullName: string;
+  companyName: string;
   email: string;
-  phone: string;
-  location: string;
-  timezone: string;
-  language: string;
-  dateFormat: string;
-  currency: string;
-  defaultPipeline: string;
-  signature: string;
-  emailDigest: boolean;
-  dealUpdates: boolean;
-  taskReminders: boolean;
-  marketing: boolean;
-  twoFactor: boolean;
-};
-
-export type PasswordState = {
-  current: string;
-  next: string;
-  confirm: string;
+  phoneNumber: string;
+  role: string;
+  teamId: number;
+  ownerInfo: string | null;
+  profilePhoto: string | null;
+  location: string | null;
+  timeZone: string | null;
+  accessExpiresAt: string | null;
+  planType: string;
+  createdAt: string;
+  updatedAt: string;
 };

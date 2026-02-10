@@ -1,9 +1,50 @@
-import axios, { type AxiosRequestConfig, type AxiosResponse, type Method } from 'axios';
+import axios, {
+  type AxiosRequestConfig,
+  type AxiosResponse,
+  type Method,
+  AxiosHeaders,
+} from 'axios';
 import type { ApiResponse } from '../types/api';
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_CLINTO_SERVER_BASE_URL ?? 'https://api.example.com',
   timeout: 10000,
+  withCredentials: true,
+});
+
+const getCookieValue = (name: string) => {
+  if (typeof document === 'undefined') return undefined;
+  const cookie = document.cookie
+    .split(';')
+    .map((item) => item.trim())
+    .find((item) => item.startsWith(`${name}=`));
+  return cookie ? decodeURIComponent(cookie.split('=')[1]) : undefined;
+};
+
+const safeBase64Decode = (value?: string) => {
+  if (!value) return undefined;
+  try {
+    return atob(value);
+  } catch {
+    return value;
+  }
+};
+
+api.interceptors.request.use((config) => {
+  const tokenBase64 = getCookieValue('cliento_token');
+  const token = safeBase64Decode(tokenBase64);
+
+  if (token) {
+    if (config.headers instanceof AxiosHeaders) {
+      config.headers.set('Authorization', `Bearer ${token}`);
+    } else {
+      const headers = AxiosHeaders.from(config.headers ?? {});
+      headers.set('Authorization', `Bearer ${token}`);
+      config.headers = headers;
+    }
+  }
+
+  return config;
 });
 
 export type HttpRequestConfig<TRequest = unknown> = Omit<

@@ -19,7 +19,7 @@ const WelcomePage = () => (
   >
     <Container maxWidth="lg" sx={{ py: { xs: 5, sm: 6, md: 10 } }}>
       <Stack
-        direction={{ xs: 'column', md: 'row' }}
+        direction={{ xs: 'column-reverse', md: 'row' }}
         spacing={{ xs: 5, md: 8 }}
         alignItems={{ xs: 'stretch', md: 'center' }}
         justifyContent="space-between"
