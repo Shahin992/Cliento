@@ -252,7 +252,7 @@ const ForgotPasswordPage = () => {
           {step === 'email' ? (
             <Box component="form" onSubmit={handleEmailSubmit}>
               <Stack spacing={2.5} alignItems="center">
-              <Box sx={{ width: '100%' }}>
+              <Box sx={{ width: '100%', textAlign:'left' }}>
                 <Typography sx={{ fontWeight: 600, mb: 0.5 }}>Email</Typography>
                 <BasicInput
                   fullWidth
