@@ -21,12 +21,15 @@ import UserManagementPage from '../pages/UserManagementPage';
 import WelcomePage from '../pages/WelcomePage';
 import PaymentSuccessPage from '../pages/PaymentSuccessPage';
 import RequireAuth from './RequireAuth';
+import PublicOnly from './PublicOnly';
 
 const AppRoutes = () => (
   <Routes>
-    <Route path="/" element={<LandingPage />} />
-    <Route path="/signin" element={<SignInPage />} />
-    <Route path="/signup" element={<SignUpPage />} />
+    <Route element={<PublicOnly />}>
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/signin" element={<SignInPage />} />
+      <Route path="/signup" element={<SignUpPage />} />
+    </Route>
     <Route path="/welcome" element={<WelcomePage />} />
     <Route path="/payment/success" element={<PaymentSuccessPage />} />
     <Route path="/forgot" element={<ForgotPasswordPage />} />

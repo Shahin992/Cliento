@@ -44,20 +44,3 @@ export const getCookie = (name: string) => {
   }
   return null;
 };
-
-export const getUserData = <T = unknown, K extends keyof T = keyof T>(
-  key: K,
-  cookieName = 'cliento_user'
-): T[K] | null => {
-  const raw = getCookie(cookieName);
-  if (!raw) {
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(decodeBase64(raw)) as T;
-    return parsed[key] ?? null;
-  } catch {
-    return null;
-  }
-};

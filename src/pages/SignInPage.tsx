@@ -5,15 +5,38 @@ import { Visibility, VisibilityOff } from '@mui/icons-material';
 
 import BasicInput from '../common/BasicInput';
 import { CustomButton } from '../common/CustomButton';
-import { signIn } from '../services/auth';
+import { getMeProfile, signIn } from '../services/auth';
 import type { SignInPayload } from '../types/auth';
-import { encodeBase64, setCookie } from '../utils/auth';
+import { removeCookie, setCookie } from '../utils/auth';
 import { useAppDispatch } from '../app/hooks';
 import { setAuth } from '../features/auth/authSlice';
-import type { User } from '../types/user';
 import { useToast } from '../common/ToastProvider';
 
 const accent = '#346fef';
+
+const extractAccessToken = (response: {
+  token?: string;
+  data?: unknown;
+}): string | null => {
+  if (typeof response.token === 'string' && response.token.trim()) {
+    return response.token;
+  }
+
+  if (response.data && typeof response.data === 'object') {
+    const dataWithToken = response.data as { token?: unknown; accessToken?: unknown };
+    if (typeof dataWithToken.token === 'string' && dataWithToken.token.trim()) {
+      return dataWithToken.token;
+    }
+    if (
+      typeof dataWithToken.accessToken === 'string' &&
+      dataWithToken.accessToken.trim()
+    ) {
+      return dataWithToken.accessToken;
+    }
+  }
+
+  return null;
+};
 
 const SignInPage = () => {
   const navigate = useNavigate();
@@ -70,23 +93,28 @@ const SignInPage = () => {
       return;
     }
 
-    if (response.token) {
-      setCookie('cliento_token', encodeBase64(response.token), {
+    const accessToken = extractAccessToken(response);
+    if (accessToken) {
+      setCookie('cliento_token', accessToken, {
         maxAgeMs: 2 * 24 * 60 * 60 * 1000,
         secure: window.location.protocol === 'https:',
         sameSite: 'Lax',
       });
     }
 
-    if (response.data) {
-      const user = response.data as User;
-      setCookie('cliento_user', encodeBase64(JSON.stringify(user)), {
-        maxAgeMs: 2 * 24 * 60 * 60 * 1000,
-        secure: window.location.protocol === 'https:',
-        sameSite: 'Lax',
+    const profileResponse = await getMeProfile();
+    if (!profileResponse.success || !profileResponse.data) {
+      if (profileResponse.statusCode === 401 || profileResponse.statusCode === 403) {
+        removeCookie('cliento_token');
+      }
+      showToast({
+        message: profileResponse.message || 'Unable to load your profile. Please sign in again.',
+        severity: 'error',
       });
-      dispatch(setAuth({ user, token: response.token }));
+      return;
     }
+
+    dispatch(setAuth({ user: profileResponse.data }));
 
     navigate('/dashboard');
   };

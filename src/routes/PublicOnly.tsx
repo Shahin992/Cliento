@@ -1,8 +1,9 @@
 import { Navigate, Outlet } from 'react-router-dom';
+
 import { useAppSelector } from '../app/hooks';
 import { getCookie } from '../utils/auth';
 
-const RequireAuth = () => {
+const PublicOnly = () => {
   const user = useAppSelector((state) => state.auth.user);
   const initialized = useAppSelector((state) => state.auth.initialized);
   const cookieToken = getCookie('cliento_token');
@@ -11,11 +12,11 @@ const RequireAuth = () => {
     return null;
   }
 
-  if (!cookieToken && !user) {
-    return <Navigate to="/signin" replace />;
+  if (cookieToken || user) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <Outlet />;
 };
 
-export default RequireAuth;
+export default PublicOnly;

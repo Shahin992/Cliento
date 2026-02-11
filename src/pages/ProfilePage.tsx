@@ -10,7 +10,6 @@ import { http } from '../services/api';
 import { changePassword } from '../services/auth';
 import { updateProfileDetails } from '../services/profile';
 import { uploadPhoto } from '../services/upload';
-import { decodeBase64, encodeBase64, getCookie, setCookie } from '../utils/auth';
 import { useAppDispatch, useAppSelector } from '../app/hooks';
 import { setAuth } from '../features/auth/authSlice';
 import { useToast } from '../common/ToastProvider';
@@ -45,7 +44,6 @@ const ProfilePage = () => {
 
   const dispatch = useAppDispatch();
   const authUser = useAppSelector((state) => state.auth.user);
-  const authToken = useAppSelector((state) => state.auth.token);
   const { showToast } = useToast();
 
   const [profile, setProfile] = useState<ProfileState>(() =>
@@ -100,23 +98,12 @@ const ProfilePage = () => {
 
         if (patchResponse.success) {
           setProfile((prev) => ({ ...prev, profilePhoto: photoUrl }));
-          const userCookie = getCookie('cliento_user');
-          if (userCookie) {
-            try {
-              const user = JSON.parse(decodeBase64(userCookie));
-              const updatedUser = { ...user, profilePhoto: photoUrl };
-              setCookie('cliento_user', encodeBase64(JSON.stringify(updatedUser)));
-              if (authUser) {
-                dispatch(
-                  setAuth({
-                    user: { ...authUser, profilePhoto: photoUrl },
-                    token: authToken,
-                  })
-                );
-              }
-            } catch {
-              // ignore malformed cookie
-            }
+          if (authUser) {
+            dispatch(
+              setAuth({
+                user: { ...authUser, profilePhoto: photoUrl },
+              })
+            );
           }
           URL.revokeObjectURL(previewUrl);
         } else {
@@ -246,35 +233,24 @@ const ProfilePage = () => {
                   timeZone: nextProfile.timeZone ?? '',
                 });
 
-                if (response.success) {
-                  setProfile(nextProfile);
-                  const userCookie = getCookie('cliento_user');
-                  if (userCookie) {
-                    try {
-                      const user = JSON.parse(decodeBase64(userCookie));
-                      const updatedUser = {
-                        ...user,
+              if (response.success) {
+                setProfile(nextProfile);
+                if (authUser) {
+                  dispatch(
+                    setAuth({
+                      user: {
+                        ...authUser,
                         fullName: nextProfile.fullName,
                         companyName: nextProfile.companyName,
                         phoneNumber: nextProfile.phoneNumber,
                         location: nextProfile.location,
                         timeZone: nextProfile.timeZone,
-                      };
-                      setCookie('cliento_user', encodeBase64(JSON.stringify(updatedUser)));
-                      if (authUser) {
-                        dispatch(
-                          setAuth({
-                            user: { ...authUser, ...updatedUser },
-                            token: authToken,
-                          })
-                        );
-                      }
-                    } catch {
-                      // ignore malformed cookie
-                    }
-                  }
-                  setIsAccountEditing(false);
-                  showToast({ message: 'Profile updated successfully.', severity: 'success' });
+                      },
+                    })
+                  );
+                }
+                setIsAccountEditing(false);
+                showToast({ message: 'Profile updated successfully.', severity: 'success' });
                 } else {
                   showToast({
                     message: response.message || 'Failed to update profile.',

@@ -6,12 +6,15 @@ import type {
   SignUpPayload,
   VerifyOtpPayload,
 } from '../types/auth';
+import type { User } from '../types/user';
 
 export const signUp = (payload: SignUpPayload) =>
   http.post<unknown, SignUpPayload>('/api/auth/signup', payload);
 
 export const signIn = (payload: SignInPayload) =>
   http.post<unknown, SignInPayload>('/api/auth/signin', payload);
+
+export const getMeProfile = () => http.get<User>('/api/users/me');
 
 export const forgotPassword = (payload: ForgotPasswordPayload) =>
   http.post<unknown, ForgotPasswordPayload>('/api/auth/forgot-password', payload);
@@ -29,3 +32,5 @@ export type ChangePasswordPayload = {
 
 export const changePassword = (payload: ChangePasswordPayload) =>
   http.post<unknown, ChangePasswordPayload>('/api/auth/change-password', payload);
+
+export const logout = () => http.post('/api/auth/logout');

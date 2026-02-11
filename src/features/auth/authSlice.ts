@@ -3,31 +3,31 @@ import type { User } from '../../types/user';
 
 type AuthState = {
   user: User | null;
-  token: string | null;
+  initialized: boolean;
 };
 
 const initialState: AuthState = {
   user: null,
-  token: null,
+  initialized: false,
 };
 
 const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    setAuth: (
-      state,
-      action: PayloadAction<{ user: User; token: string | null | undefined }>
-    ) => {
+    setAuth: (state, action: PayloadAction<{ user: User }>) => {
       state.user = action.payload.user;
-      state.token = action.payload.token ?? null;
+      state.initialized = true;
     },
     clearAuth: (state) => {
       state.user = null;
-      state.token = null;
+      state.initialized = true;
+    },
+    setAuthInitialized: (state, action: PayloadAction<boolean>) => {
+      state.initialized = action.payload;
     },
   },
 });
 
-export const { setAuth, clearAuth } = authSlice.actions;
+export const { setAuth, clearAuth, setAuthInitialized } = authSlice.actions;
 export default authSlice.reducer;

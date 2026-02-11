@@ -6,10 +6,11 @@ import { CssBaseline, ThemeProvider } from '@mui/material';
 
 import App from './App';
 import { store } from './app/store';
-import { setAuth } from './features/auth/authSlice';
+import { clearAuth, setAuth, setAuthInitialized } from './features/auth/authSlice';
 import theme from './theme';
 import { ToastProvider } from './common/ToastProvider';
-import { decodeBase64, getCookie } from './utils/auth';
+import { getCookie, removeCookie } from './utils/auth';
+import { getMeProfile } from './services/auth';
 import './index.css';
 
 if ('serviceWorker' in navigator) {
@@ -19,16 +20,23 @@ if ('serviceWorker' in navigator) {
 }
 
 const tokenCookie = getCookie('cliento_token');
-const userCookie = getCookie('cliento_user');
-if (userCookie) {
-  try {
-    const user = JSON.parse(decodeBase64(userCookie));
-    const token = tokenCookie ? decodeBase64(tokenCookie) : null;
-    store.dispatch(setAuth({ user, token }));
-  } catch {
-    // ignore malformed cookie
+void (async () => {
+  const response = await getMeProfile();
+  if (response.success && response.data) {
+    store.dispatch(setAuth({ user: response.data }));
+    return;
   }
-}
+
+  if (response.statusCode === 401 || response.statusCode === 403) {
+    if (tokenCookie) {
+      removeCookie('cliento_token');
+    }
+    store.dispatch(clearAuth());
+    return;
+  }
+
+  store.dispatch(setAuthInitialized(true));
+})();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

@@ -21,18 +21,8 @@ const getCookieValue = (name: string) => {
   return cookie ? decodeURIComponent(cookie.split('=')[1]) : undefined;
 };
 
-const safeBase64Decode = (value?: string) => {
-  if (!value) return undefined;
-  try {
-    return atob(value);
-  } catch {
-    return value;
-  }
-};
-
 api.interceptors.request.use((config) => {
-  const tokenBase64 = getCookieValue('cliento_token');
-  const token = safeBase64Decode(tokenBase64);
+  const token = getCookieValue('cliento_token');
 
   if (token) {
     if (config.headers instanceof AxiosHeaders) {

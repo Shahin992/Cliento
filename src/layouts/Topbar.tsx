@@ -30,6 +30,7 @@ import { useAppSelector } from '../app/hooks';
 import { useAppDispatch } from '../app/hooks';
 import { clearAuth } from '../features/auth/authSlice';
 import { removeCookie } from '../utils/auth';
+import { logout } from '../services/auth';
 
 interface TopbarProps {
   isMobile: boolean;
@@ -86,12 +87,15 @@ const Topbar = ({
     onOpenAddContact();
   };
 
-  const handleLogout = () => {
-    removeCookie('cliento_token');
-    removeCookie('cliento_user');
-    dispatch(clearAuth());
-    handleClose();
-    navigate('/signin');
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } finally {
+      removeCookie('cliento_token');
+      dispatch(clearAuth());
+      handleClose();
+      navigate('/signin');
+    }
   };
 
   const displayName = user?.fullName ?? 'Cliento Admin';
