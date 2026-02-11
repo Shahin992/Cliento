@@ -1,9 +1,9 @@
 import type { ChangeEvent, MouseEvent } from 'react';
-import { useMemo } from 'react';
-import { Avatar, Box, Divider, Stack, Typography } from '@mui/material';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Avatar, Box, IconButton, Stack, Tooltip, Typography } from '@mui/material';
 import PhotoCameraOutlined from '@mui/icons-material/PhotoCameraOutlined';
+import type { SxProps, Theme } from '@mui/material/styles';
 
-import { CustomButton } from '../../common/CustomButton';
 import { bgSoft, borderColor, cardSx, mutedText } from './profileStyles';
 import type { ProfileState } from './types';
 
@@ -36,6 +36,62 @@ interface ProfileOverviewCardProps {
   isUploading: boolean;
   onAvatarChange: (file: File | null) => void;
 }
+
+interface OverflowTooltipTextProps {
+  text: string;
+  sx: SxProps<Theme>;
+}
+
+const OverflowTooltipText = ({ text, sx }: OverflowTooltipTextProps) => {
+  const textRef = useRef<HTMLSpanElement | null>(null);
+  const [isTruncated, setIsTruncated] = useState(false);
+
+  useEffect(() => {
+    const element = textRef.current;
+    if (!element) {
+      return;
+    }
+
+    const checkTruncation = () => {
+      setIsTruncated(element.scrollWidth > element.clientWidth);
+    };
+
+    checkTruncation();
+
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', checkTruncation);
+      return () => {
+        window.removeEventListener('resize', checkTruncation);
+      };
+    }
+
+    const resizeObserver = new ResizeObserver(checkTruncation);
+    resizeObserver.observe(element);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [text]);
+
+  return (
+    <Tooltip title={isTruncated ? text : ''} disableHoverListener={!isTruncated}>
+      <Typography
+        ref={textRef}
+        component="span"
+        sx={{
+          display: 'block',
+          width: '100%',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          ...sx,
+        }}
+      >
+        {text}
+      </Typography>
+    </Tooltip>
+  );
+};
 
 const ProfileOverviewCard = ({
   profile,
@@ -77,9 +133,9 @@ const ProfileOverviewCard = ({
       />
       <Stack spacing={2.5} sx={{ position: 'relative', zIndex: 1 }}>
         <Stack
-          direction={{ xs: 'column', sm: 'row' }}
-          spacing={{ xs: 1.5, sm: 2 }}
-          alignItems={{ xs: 'flex-start', sm: 'center' }}
+          direction="row"
+          spacing={1.5}
+          alignItems="center"
           justifyContent="space-between"
         >
           <Box sx={{ position: 'relative' }}>
@@ -98,48 +154,68 @@ const ProfileOverviewCard = ({
             >
               {initials}
             </Avatar>
-            <Box
+            <IconButton
+              component="label"
+              disabled={isUploading}
               sx={{
                 position: 'absolute',
-                right: -2,
-                bottom: -2,
-                width: 14,
-                height: 14,
+                right: -6,
+                bottom: -6,
+                width: 28,
+                height: 28,
                 borderRadius: '50%',
-                backgroundColor: '#22c55e',
+                backgroundColor: '#111827',
+                color: '#fff',
                 border: '2px solid #fff',
+                '&:hover': {
+                  backgroundColor: '#1f2937',
+                },
+                '&.Mui-disabled': {
+                  backgroundColor: '#94a3b8',
+                  color: '#e2e8f0',
+                },
               }}
-            />
+            >
+              <PhotoCameraOutlined sx={{ fontSize: 16 }} />
+              <Box
+                component="input"
+                type="file"
+                accept="image/*"
+                sx={{ display: 'none' }}
+                onClick={(event: MouseEvent<HTMLInputElement>) => {
+                  (event.target as HTMLInputElement).value = '';
+                }}
+                onChange={(event: ChangeEvent<HTMLInputElement>) => {
+                  const file = event.target.files?.[0] ?? null;
+                  onAvatarChange(file);
+                }}
+              />
+            </IconButton>
           </Box>
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography
+            <OverflowTooltipText
+              text={profile.fullName}
               sx={{
                 fontWeight: 800,
                 fontSize: { xs: 18, sm: 20 },
                 color: '#0f172a',
-                wordBreak: 'break-word',
               }}
-            >
-              {profile.fullName}
-            </Typography>
-            <Typography
+            />
+            <OverflowTooltipText
+              text={profile.email}
               sx={{
                 color: '#6366f1',
                 fontSize: 12,
                 fontWeight: 600,
-                wordBreak: 'break-word',
               }}
-            >
-              {profile.email}
-            </Typography>
+            />
           </Box>
           <Box
             sx={{
-              alignSelf: { xs: 'stretch', sm: 'center' },
               backgroundColor: '#111827',
               color: '#fff',
               borderRadius: 999,
-              px: 2,
+              px: { xs: 1.5, sm: 2 },
               py: 0.6,
               fontSize: 12,
               fontWeight: 600,
@@ -149,62 +225,23 @@ const ProfileOverviewCard = ({
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
+              maxWidth: { xs: 120, sm: 180 },
             }}
           >
             {profile.companyName || 'Company'}
           </Box>
         </Stack>
 
-        <Stack
-          direction={{ xs: 'column', sm: 'row' }}
-          spacing={1}
-          sx={{
-            backgroundColor: '#ffffff',
-            borderRadius: 2.5,
-            p: 1.5,
-            border: `1px solid ${borderColor}`,
-          }}
-        >
-          <CustomButton
-            component="label"
-            variant="outlined"
-            customColor="#94a3b8"
-            sx={{
-              borderRadius: 999,
-              px: 2.5,
-              textTransform: 'none',
-              width: { xs: '100%', sm: 'auto' },
-            }}
-            disabled={isUploading}
-            startIcon={<PhotoCameraOutlined />}
-          >
-            {isUploading ? 'Uploading...' : 'Change Photo'}
-            <Box
-              component="input"
-              type="file"
-              accept="image/*"
-              sx={{ display: 'none' }}
-              onClick={(event: MouseEvent<HTMLInputElement>) => {
-                (event.target as HTMLInputElement).value = '';
-              }}
-              onChange={(event: ChangeEvent<HTMLInputElement>) => {
-                const file = event.target.files?.[0] ?? null;
-                onAvatarChange(file);
-              }}
-            />
-          </CustomButton>
-        </Stack>
-        <Divider sx={{ borderColor: 'rgba(148, 163, 184, 0.35)' }} />
-
         <Box
           sx={{
             display: 'grid',
-            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
+            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
             gap: 1.25,
           }}
         >
           {[
             { label: 'Phone', value: profile.phoneNumber },
+            { label: 'Location', value: profile.location || 'Not set' },
             { label: 'Time Zone', value: timeZoneLabel },
           ].map((stat) => (
             <Box

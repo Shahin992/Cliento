@@ -180,18 +180,20 @@ const ProfilePage = () => {
         subtitle="Manage your account profile and access"
       />
 
+      <ProfileOverviewCard
+        profile={profile}
+        isUploading={isAvatarUploading}
+        onAvatarChange={handleAvatarChange}
+      />
+
       <Box
         sx={{
           display: 'grid',
-          gridTemplateColumns: { xs: '1fr', lg: '1.1fr 1.4fr' },
+          gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
           gap: { xs: 1.5, sm: 2.5 },
+          alignItems: 'start',
         }}
       >
-        <ProfileOverviewCard
-          profile={profile}
-          isUploading={isAvatarUploading}
-          onAvatarChange={handleAvatarChange}
-        />
         <AccountDetailsSection
           profile={accountDraft}
           isSaving={isProfileUpdating}
@@ -233,7 +235,7 @@ const ProfilePage = () => {
               return;
             }
 
-        const applyUpdates = async () => {
+            const applyUpdates = async () => {
               setIsProfileUpdating(true);
               try {
                 const response = await updateProfileDetails({
@@ -293,75 +295,75 @@ const ProfilePage = () => {
             void applyUpdates();
           }}
         />
-      </Box>
 
-      <ChangePasswordSection
-        passwords={passwords}
-        isSaving={isPasswordUpdating}
-        isDisabled={
-          !passwords.current.trim() || !passwords.next.trim() || !passwords.confirm.trim()
-        }
-        errors={passwordErrors}
-        onChange={(field, value) =>
-          setPasswords((prev) => ({ ...prev, [field]: value }))
-        }
-        onSave={() => {
-          if (isPasswordUpdating) return;
-          const trimmed = {
-            current: passwords.current.trim(),
-            next: passwords.next.trim(),
-            confirm: passwords.confirm.trim(),
-          };
+        <ChangePasswordSection
+          passwords={passwords}
+          isSaving={isPasswordUpdating}
+          isDisabled={
+            !passwords.current.trim() || !passwords.next.trim() || !passwords.confirm.trim()
+          }
+          errors={passwordErrors}
+          onChange={(field, value) =>
+            setPasswords((prev) => ({ ...prev, [field]: value }))
+          }
+          onSave={() => {
+            if (isPasswordUpdating) return;
+            const trimmed = {
+              current: passwords.current.trim(),
+              next: passwords.next.trim(),
+              confirm: passwords.confirm.trim(),
+            };
 
-          const nextErrors: Partial<Record<keyof PasswordState, string>> = {};
-          if (trimmed.current.length < 6) {
-            nextErrors.current = 'Must be at least 6 characters.';
-          }
-          if (trimmed.next.length < 6) {
-            nextErrors.next = 'Must be at least 6 characters.';
-          }
-          if (trimmed.confirm.length < 6) {
-            nextErrors.confirm = 'Must be at least 6 characters.';
-          }
-          if (trimmed.next && trimmed.confirm && trimmed.next !== trimmed.confirm) {
-            nextErrors.confirm = 'Passwords do not match.';
-          }
+            const nextErrors: Partial<Record<keyof PasswordState, string>> = {};
+            if (trimmed.current.length < 6) {
+              nextErrors.current = 'Must be at least 6 characters.';
+            }
+            if (trimmed.next.length < 6) {
+              nextErrors.next = 'Must be at least 6 characters.';
+            }
+            if (trimmed.confirm.length < 6) {
+              nextErrors.confirm = 'Must be at least 6 characters.';
+            }
+            if (trimmed.next && trimmed.confirm && trimmed.next !== trimmed.confirm) {
+              nextErrors.confirm = 'Passwords do not match.';
+            }
 
-          setPasswordErrors(nextErrors);
-          if (Object.keys(nextErrors).length > 0) {
-            return;
-          }
+            setPasswordErrors(nextErrors);
+            if (Object.keys(nextErrors).length > 0) {
+              return;
+            }
 
-          const applyPasswordChange = async () => {
-            setIsPasswordUpdating(true);
-            try {
-              const response = await changePassword({
-                currentPassword: trimmed.current,
-                newPassword: trimmed.next,
-              });
-              if (response.success) {
-                showToast({ message: 'Password updated successfully.', severity: 'success' });
-                setPasswords({ current: '', next: '', confirm: '' });
-              } else {
+            const applyPasswordChange = async () => {
+              setIsPasswordUpdating(true);
+              try {
+                const response = await changePassword({
+                  currentPassword: trimmed.current,
+                  newPassword: trimmed.next,
+                });
+                if (response.success) {
+                  showToast({ message: 'Password updated successfully.', severity: 'success' });
+                  setPasswords({ current: '', next: '', confirm: '' });
+                } else {
+                  showToast({
+                    message: response.message || 'Failed to update password.',
+                    severity: 'error',
+                  });
+                }
+              } catch (error) {
                 showToast({
-                  message: response.message || 'Failed to update password.',
+                  message:
+                    error instanceof Error ? error.message : 'Failed to update password.',
                   severity: 'error',
                 });
+              } finally {
+                setIsPasswordUpdating(false);
               }
-            } catch (error) {
-              showToast({
-                message:
-                  error instanceof Error ? error.message : 'Failed to update password.',
-                severity: 'error',
-              });
-            } finally {
-              setIsPasswordUpdating(false);
-            }
-          };
+            };
 
-          void applyPasswordChange();
-        }}
-      />
+            void applyPasswordChange();
+          }}
+        />
+      </Box>
 
     </Box>
   );
