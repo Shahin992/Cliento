@@ -418,9 +418,11 @@ const ContactsPage = () => {
             backgroundColor: bgSoft,
           }}
         >
-          <Typography sx={{ fontWeight: 600, color: '#111827' }}>
-            Total: {totalCustomers} contacts
-          </Typography>
+          {!isLoadingContacts ? (
+            <Typography sx={{ fontWeight: 600, color: '#111827' }}>
+              Total: {totalCustomers} contacts
+            </Typography>
+          ) : null}
         </Stack>
 
         <Box
@@ -784,31 +786,35 @@ const ContactsPage = () => {
             alignItems="center"
             sx={{ ml: 'auto', flexShrink: 0 }}
           >
-            <Typography sx={{ color: mutedText, fontSize: 13 }}>
-              {totalCustomers === 0
-                ? '0 results'
-                : `${pageStart}-${pageEnd} of ${totalCustomers}`}
-            </Typography>
-            <Pagination
-              page={page}
-              count={totalPages}
-              onChange={(_, value) => {
-                if (value !== page) {
-                  setPage(value);
-                }
-              }}
-              disabled={isLoadingContacts || totalPages <= 1}
-              shape="rounded"
-              size="small"
-              color="primary"
-              siblingCount={0}
-              boundaryCount={1}
-              sx={{
-                '& .MuiPaginationItem-root': {
-                  borderRadius: 999,
-                },
-              }}
-            />
+            {!isLoadingContacts ? (
+              <Typography sx={{ color: mutedText, fontSize: 13 }}>
+                {totalCustomers === 0
+                  ? '0 results'
+                  : `${pageStart}-${pageEnd} of ${totalCustomers}`}
+              </Typography>
+            ) : null}
+            {!isLoadingContacts ? (
+              <Pagination
+                page={page}
+                count={totalPages}
+                onChange={(_, value) => {
+                  if (value !== page) {
+                    setPage(value);
+                  }
+                }}
+                disabled={isLoadingContacts || totalPages <= 1}
+                shape="rounded"
+                size="small"
+                color="primary"
+                siblingCount={0}
+                boundaryCount={1}
+                sx={{
+                  '& .MuiPaginationItem-root': {
+                    borderRadius: 999,
+                  },
+                }}
+              />
+            ) : null}
           </Stack>
         </Box>
       </Box>
