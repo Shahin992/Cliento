@@ -13,7 +13,6 @@ import {
   AlternateEmailOutlined,
   ArrowBack,
   CameraAltOutlined,
-  Circle,
   LocationOnOutlined,
   MoreHoriz,
   SellOutlined,
