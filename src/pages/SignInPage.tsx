@@ -58,7 +58,6 @@ const SignInPage = () => {
 
     setSubmitting(true);
     const response = await signIn(payload);
-    setSubmitting(false);
 
     if (!response.success) {
       showToast({
@@ -68,17 +67,9 @@ const SignInPage = () => {
       return;
     }
 
-    const profileResponse = await getMeProfile();
-    if (!profileResponse.success || !profileResponse.data) {
-      showToast({
-        message: profileResponse.message || 'Unable to load your profile. Please sign in again.',
-        severity: 'error',
-      });
-      return;
-    }
-
-    dispatch(setAuth({ user: profileResponse.data }));
+    dispatch(setAuth({ user: response.data }));
     navigate('/dashboard');
+    setSubmitting(false);
   };
 
   return (

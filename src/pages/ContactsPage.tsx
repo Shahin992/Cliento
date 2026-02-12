@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { CustomIconButton as IconButton } from '../common/CustomIconButton';
+import { CustomIconButton } from '../common/CustomIconButton';
 import {
   Avatar,
   Box,
@@ -9,11 +9,13 @@ import {
   Skeleton,
   Select,
   Stack,
-  TextField,
   Tooltip,
   Typography,
+  useMediaQuery,
 } from '@mui/material';
 import {
+  AddOutlined,
+  Close,
   DeleteOutlineOutlined,
   EditOutlined,
   LocalOfferOutlined,
@@ -23,6 +25,7 @@ import {
 import { Link } from 'react-router-dom';
 
 import PageHeader from '../components/PageHeader';
+import BasicInput from '../common/BasicInput';
 import { CustomButton } from '../common/CustomButton';
 import AddCustomerModal from '../components/contacts/modals/AddCustomerModal';
 import { getContacts, type ContactListItem } from '../services/contacts';
@@ -31,8 +34,8 @@ const borderColor = '#e7edf6';
 const mutedText = '#8b95a7';
 const primary = '#6d28ff';
 const bgSoft = '#f8fbff';
-const DEFAULT_PAGE_SIZE = 5;
-const PAGE_LIMIT_OPTIONS = [5,10, 20, 50];
+const DEFAULT_PAGE_SIZE = 10;
+const PAGE_LIMIT_OPTIONS = [10, 25, 50, 100];
 
 const getContactInitials = (contact: ContactListItem) => {
   const first = contact.firstName?.trim()?.[0] ?? '';
@@ -92,6 +95,8 @@ const ContactsPage = () => {
   const [contactsError, setContactsError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+  const isMobileViewport = useMediaQuery('(max-width:599.95px)');
   const requestIdRef = useRef(0);
 
   useEffect(() => {
@@ -187,10 +192,10 @@ const ContactsPage = () => {
         width: '100%',
         maxWidth: '100%',
         px: { xs: 1.5, sm: 2, md: 3 },
-        pb: 0,
-        height: { xs: 'calc(100vh - 136px)', sm: 'calc(100vh - 112px)' },
+        pb: { xs: 12, sm: 0 },
+        height: { xs: 'auto', sm: 'calc(100vh - 112px)' },
         minHeight: 0,
-        overflow: 'hidden',
+        overflow: { xs: 'visible', sm: 'hidden' },
         display: 'flex',
         flexDirection: 'column',
         gap: 2,
@@ -199,43 +204,110 @@ const ContactsPage = () => {
       <PageHeader
         title="Contacts"
         subtitle="Manage your contact list"
+        stackOnMobile={false}
+        actionFullWidthOnMobile={false}
         action={
-          <Stack
-            direction={{ xs: 'column', sm: 'row' }}
-            spacing={1}
-            sx={{ width: { xs: '100%', sm: 'auto' } }}
-          >
-            <TextField
-              size="small"
-              placeholder="Search contacts"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              sx={{
-                minWidth: { xs: '100%', sm: 260 },
-                '& .MuiOutlinedInput-root': {
+          <>
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              justifyContent="flex-end"
+              sx={{ display: { xs: 'flex', sm: 'none' }, minWidth: 90 }}
+            >
+              {!isMobileSearchOpen ? (
+                <CustomIconButton
+                  size="small"
+                  onClick={() => setIsMobileSearchOpen(true)}
+                  customColor={mutedText}
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 999,
+                    border: `1px solid ${borderColor}`,
+                    backgroundColor: 'white',
+                  }}
+                >
+                  <SearchOutlined sx={{ fontSize: 20 }} />
+                </CustomIconButton>
+              ) : null}
+              <CustomIconButton
+                size="small"
+                onClick={() => setIsAddCustomerOpen(true)}
+                customColor="white"
+                sx={{
+                  width: 40,
                   height: 40,
                   borderRadius: 999,
-                  backgroundColor: 'white',
-                },
-              }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchOutlined sx={{ color: mutedText, fontSize: 20 }} />
-                  </InputAdornment>
-                ),
-              }}
-            />
-            <CustomButton
-              variant="contained"
-              sx={{ borderRadius: 999, px: 2.5, textTransform: 'none' }}
-              onClick={() => setIsAddCustomerOpen(true)}
+                  backgroundColor: `${primary} !important`,
+                  '&:hover': {
+                    backgroundColor: '#5b21d6 !important',
+                  },
+                  '&:focus, &:focus-visible': {
+                    backgroundColor: `${primary} !important`,
+                  },
+                  '&.Mui-focusVisible': {
+                    backgroundColor: `${primary} !important`,
+                  },
+                }}
+              >
+                <AddOutlined sx={{ fontSize: 20 }} />
+              </CustomIconButton>
+            </Stack>
+
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{ display: { xs: 'none', sm: 'flex' }, width: { sm: 'auto' } }}
             >
-              Add Contact
-            </CustomButton>
-          </Stack>
+              <CustomButton
+                variant="contained"
+                sx={{ borderRadius: 999, px: 2.5, textTransform: 'none' }}
+                onClick={() => setIsAddCustomerOpen(true)}
+              >
+                Add Contact
+              </CustomButton>
+            </Stack>
+          </>
         }
       />
+      <Box sx={{ mt: -1, mb: 1, display: { xs: isMobileSearchOpen ? 'block' : 'none', sm: 'block' } }}>
+        <BasicInput
+          autoFocus={isMobileSearchOpen}
+          fullWidth
+          placeholder="Search contacts"
+          value={searchQuery}
+          onChange={(event) => setSearchQuery(event.target.value)}
+          minWidth={0}
+          sx={{
+            height: 40,
+            borderRadius: 999,
+            borderColor: '#d6dee9',
+          }}
+          startAdornment={
+            <InputAdornment position="start">
+              <SearchOutlined sx={{ color: mutedText, fontSize: 20 }} />
+            </InputAdornment>
+          }
+          endAdornment={
+            <InputAdornment position="end">
+              <CustomIconButton
+                size="small"
+                onClick={() => {
+                  if (isMobileViewport) {
+                    setIsMobileSearchOpen(false);
+                    return;
+                  }
+                  setSearchQuery('');
+                }}
+                customColor={mutedText}
+              >
+                <Close fontSize="small" />
+              </CustomIconButton>
+            </InputAdornment>
+          }
+        />
+      </Box>
 
         <Box
           sx={{
@@ -303,9 +375,10 @@ const ContactsPage = () => {
 
           <Box
             sx={{
-              flex: 1,
-              minHeight: 0,
-              overflowY: 'auto',
+              flex: { xs: 'unset', sm: 1 },
+              minHeight: { xs: 'auto', sm: 0 },
+              overflowY: { xs: 'visible', sm: 'auto' },
+              WebkitOverflowScrolling: 'touch',
               scrollbarWidth: 'none',
               msOverflowStyle: 'none',
               '&::-webkit-scrollbar': {
@@ -490,7 +563,7 @@ const ContactsPage = () => {
                   }}
                 >
                   <Stack direction="row" spacing={0.75}>
-                    <IconButton
+                    <CustomIconButton
                       size="small"
                       sx={{
                         width: 32,
@@ -502,8 +575,8 @@ const ContactsPage = () => {
                       }}
                     >
                       <EditOutlined sx={{ fontSize: 16 }} />
-                    </IconButton>
-                    <IconButton
+                    </CustomIconButton>
+                    <CustomIconButton
                       size="small"
                       sx={{
                         width: 32,
@@ -518,7 +591,7 @@ const ContactsPage = () => {
                       }}
                     >
                       <DeleteOutlineOutlined sx={{ fontSize: 16, color: '#dc2626' }} />
-                    </IconButton>
+                    </CustomIconButton>
                   </Stack>
                 </Box>
                     </Box>
@@ -567,17 +640,20 @@ const ContactsPage = () => {
           sx={{
             display: 'flex',
             justifyContent: 'space-between',
-            alignItems: { xs: 'flex-start', sm: 'center' },
-            gap: 2,
+            alignItems: 'center',
+            gap: { xs: 1, sm: 2 },
             px: { xs: 1.5, sm: 2.5 },
-            py: 2,
+            py: { xs: 1.25, sm: 2 },
             borderTop: `1px solid ${borderColor}`,
             backgroundColor: 'white',
-            flexWrap: 'wrap',
+            flexWrap: 'nowrap',
+            overflowX: 'auto',
           }}
         >
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ width: { xs: '100%', sm: 'auto' } }}>
-            <Typography sx={{ color: mutedText, fontSize: 13 }}>Rows per page</Typography>
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ flexShrink: 0 }}>
+            <Typography sx={{ color: mutedText, fontSize: 13, display: { xs: 'none', sm: 'block' } }}>
+              Rows per page
+            </Typography>
             <Select
               size="small"
               value={String(limit)}
@@ -601,10 +677,10 @@ const ContactsPage = () => {
             </Select>
           </Stack>
           <Stack
-            direction={{ xs: 'column', sm: 'row' }}
+            direction="row"
             spacing={1.25}
-            alignItems={{ xs: 'flex-start', sm: 'center' }}
-            sx={{ ml: { xs: 0, sm: 'auto' }, width: { xs: '100%', sm: 'auto' } }}
+            alignItems="center"
+            sx={{ ml: 'auto', flexShrink: 0 }}
           >
             <Typography sx={{ color: mutedText, fontSize: 13 }}>
               {totalCustomers === 0
@@ -626,7 +702,6 @@ const ContactsPage = () => {
               siblingCount={0}
               boundaryCount={1}
               sx={{
-                alignSelf: { xs: 'center', sm: 'auto' },
                 '& .MuiPaginationItem-root': {
                   borderRadius: 999,
                 },

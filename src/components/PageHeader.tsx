@@ -5,15 +5,23 @@ interface PageHeaderProps {
   title: string;
   subtitle?: string;
   action?: React.ReactNode;
+  stackOnMobile?: boolean;
+  actionFullWidthOnMobile?: boolean;
 }
 
-const PageHeader = ({ title, subtitle, action }: PageHeaderProps) => (
+const PageHeader = ({
+  title,
+  subtitle,
+  action,
+  stackOnMobile = true,
+  actionFullWidthOnMobile = true,
+}: PageHeaderProps) => (
   <Box
     sx={{
       display: 'flex',
       alignItems: { xs: 'flex-start', sm: 'center' },
       justifyContent: 'space-between',
-      flexDirection: { xs: 'column', sm: 'row' },
+      flexDirection: { xs: stackOnMobile ? 'column' : 'row', sm: 'row' },
       gap: { xs: 1.5, sm: 2 },
       mb: 3,
     }}
@@ -28,7 +36,11 @@ const PageHeader = ({ title, subtitle, action }: PageHeaderProps) => (
         </Typography>
       ) : null}
     </Box>
-    {action ? <Box sx={{ width: { xs: '100%', sm: 'auto' } }}>{action}</Box> : null}
+    {action ? (
+      <Box sx={{ width: { xs: actionFullWidthOnMobile ? '100%' : 'auto', sm: 'auto' } }}>
+        {action}
+      </Box>
+    ) : null}
   </Box>
 );
 

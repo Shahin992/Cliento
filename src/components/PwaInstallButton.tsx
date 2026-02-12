@@ -52,8 +52,9 @@ const PwaInstallButton = () => {
     <Box
       sx={{
         position: 'fixed',
-        right: { xs: 16, md: 24 },
-        bottom: { xs: 16, md: 24 },
+        right: { xs: 16, sm: 24 },
+        left: 'auto',
+        bottom: { xs: 16, sm: 88 },
         zIndex: 1500,
       }}
     >
