@@ -32,7 +32,7 @@ import { getContacts, type ContactListItem } from '../services/contacts';
 
 const borderColor = '#e7edf6';
 const mutedText = '#8b95a7';
-const primary = '#6d28ff';
+const primary = '#346fef';
 const bgSoft = '#f8fbff';
 const DEFAULT_PAGE_SIZE = 10;
 const PAGE_LIMIT_OPTIONS = [10, 25, 50, 100];
@@ -241,7 +241,7 @@ const ContactsPage = () => {
                   borderRadius: 999,
                   backgroundColor: `${primary} !important`,
                   '&:hover': {
-                    backgroundColor: '#5b21d6 !important',
+                    backgroundColor: '#346fef !important',
                   },
                   '&:focus, &:focus-visible': {
                     backgroundColor: `${primary} !important`,
@@ -258,11 +258,37 @@ const ContactsPage = () => {
             <Stack
               direction="row"
               spacing={1}
-              sx={{ display: { xs: 'none', sm: 'flex' }, width: { sm: 'auto' } }}
+              alignItems="center"
+              sx={{ display: { xs: 'none', sm: 'flex' }, width: { sm: 'auto' }, flexWrap: 'nowrap' }}
             >
+              <BasicInput
+                fullWidth
+                placeholder="Search contacts"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                minWidth={240}
+                sx={{
+                  height: 40,
+                  borderRadius: 999,
+                  borderColor: '#d6dee9',
+                  minWidth: { sm: 240, md: 280 },
+                }}
+                startAdornment={
+                  <InputAdornment position="start">
+                    <SearchOutlined sx={{ color: mutedText, fontSize: 20 }} />
+                  </InputAdornment>
+                }
+              />
               <CustomButton
                 variant="contained"
-                sx={{ borderRadius: 999, px: 2.5, textTransform: 'none' }}
+                sx={{
+                  borderRadius: 999,
+                  px: 2.5,
+                  textTransform: 'none',
+                  minWidth: { sm: 132, md: 148 },
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                }}
                 onClick={() => setIsAddCustomerOpen(true)}
               >
                 Add Contact
@@ -271,7 +297,7 @@ const ContactsPage = () => {
           </>
         }
       />
-      <Box sx={{ mt: -1, mb: 1, display: { xs: isMobileSearchOpen ? 'block' : 'none', sm: 'block' } }}>
+      <Box sx={{ mt: -1, mb: 1, display: { xs: isMobileSearchOpen ? 'block' : 'none', sm: 'none' } }}>
         <BasicInput
           autoFocus={isMobileSearchOpen}
           fullWidth
