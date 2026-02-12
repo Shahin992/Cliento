@@ -5,7 +5,7 @@ import { Visibility, VisibilityOff } from '@mui/icons-material';
 
 import BasicInput from '../common/BasicInput';
 import { CustomButton } from '../common/CustomButton';
-import { getMeProfile, signIn } from '../services/auth';
+import { signIn } from '../services/auth';
 import type { SignInPayload } from '../types/auth';
 import { useAppDispatch } from '../app/hooks';
 import { setAuth } from '../features/auth/authSlice';
@@ -64,6 +64,16 @@ const SignInPage = () => {
         message: response.details || response.message || 'Sign in failed. Please try again.',
         severity: 'error',
       });
+      setSubmitting(false);
+      return;
+    }
+
+    if (!response.data) {
+      showToast({
+        message: 'Sign in failed. Missing user data.',
+        severity: 'error',
+      });
+      setSubmitting(false);
       return;
     }
 

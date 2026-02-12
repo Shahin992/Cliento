@@ -12,7 +12,7 @@ export const signUp = (payload: SignUpPayload) =>
   http.post<unknown, SignUpPayload>('/api/auth/signup', payload);
 
 export const signIn = (payload: SignInPayload) =>
-  http.post<unknown, SignInPayload>('/api/auth/signin', payload);
+  http.post<User, SignInPayload>('/api/auth/signin', payload);
 
 export const getMeProfile = () => http.get<User>('/api/users/me');
 
