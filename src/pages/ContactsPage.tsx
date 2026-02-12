@@ -27,8 +27,10 @@ import { Link } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
 import BasicInput from '../common/BasicInput';
 import { CustomButton } from '../common/CustomButton';
+import ConfirmationAlertModal from '../common/ConfirmationAlertModal';
+import { useToast } from '../common/ToastProvider';
 import AddCustomerModal from '../components/contacts/modals/AddCustomerModal';
-import { getContacts, type ContactListItem } from '../services/contacts';
+import { deleteContact, getContacts, type ContactListItem } from '../services/contacts';
 
 const borderColor = '#e7edf6';
 const mutedText = '#8b95a7';
@@ -95,9 +97,65 @@ const ContactsPage = () => {
   const [contactsError, setContactsError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
+  const [selectedContactForEdit, setSelectedContactForEdit] = useState<ContactListItem | null>(null);
+  const [selectedContactForDelete, setSelectedContactForDelete] = useState<ContactListItem | null>(null);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isDeletingContact, setIsDeletingContact] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const isMobileViewport = useMediaQuery('(max-width:599.95px)');
   const requestIdRef = useRef(0);
+  const { showToast } = useToast();
+
+  const openAddContactModal = () => {
+    setSelectedContactForEdit(null);
+    setIsAddCustomerOpen(true);
+  };
+
+  const openEditContactModal = (contact: ContactListItem) => {
+    setSelectedContactForEdit(contact);
+    setIsAddCustomerOpen(true);
+  };
+
+  const openDeleteContactModal = (contact: ContactListItem) => {
+    setSelectedContactForDelete(contact);
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const handleConfirmDeleteContact = async () => {
+    const contactId = selectedContactForDelete?._id?.trim();
+    if (!contactId) {
+      setIsDeleteConfirmOpen(false);
+      setSelectedContactForDelete(null);
+      return;
+    }
+
+    setIsDeletingContact(true);
+    try {
+      const response = await deleteContact(contactId);
+      if (!response.success) {
+        showToast({
+          message: response.message || 'Failed to delete contact.',
+          severity: 'error',
+        });
+        return;
+      }
+
+      showToast({
+        message: response.message || 'Contact deleted successfully.',
+        severity: 'success',
+      });
+      setIsDeleteConfirmOpen(false);
+      setSelectedContactForDelete(null);
+      setReloadKey((prev) => prev + 1);
+    } catch (error) {
+      showToast({
+        message: error instanceof Error ? error.message : 'Failed to delete contact.',
+        severity: 'error',
+      });
+    } finally {
+      setIsDeletingContact(false);
+    }
+  };
 
   useEffect(() => {
     setPage(1);
@@ -233,7 +291,7 @@ const ContactsPage = () => {
               ) : null}
               <CustomIconButton
                 size="small"
-                onClick={() => setIsAddCustomerOpen(true)}
+                onClick={openAddContactModal}
                 customColor="white"
                 sx={{
                   width: 40,
@@ -289,7 +347,7 @@ const ContactsPage = () => {
                   whiteSpace: 'nowrap',
                   flexShrink: 0,
                 }}
-                onClick={() => setIsAddCustomerOpen(true)}
+                onClick={openAddContactModal}
               >
                 Add Contact
               </CustomButton>
@@ -589,35 +647,53 @@ const ContactsPage = () => {
                   }}
                 >
                   <Stack direction="row" spacing={0.75}>
-                    <CustomIconButton
-                      size="small"
-                      sx={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: 999,
-                        border: `1px solid ${borderColor}`,
-                        color: '#64748b',
-                        backgroundColor: 'white',
-                      }}
-                    >
-                      <EditOutlined sx={{ fontSize: 16 }} />
-                    </CustomIconButton>
-                    <CustomIconButton
-                      size="small"
-                      sx={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: 999,
-                        border: '1px solid #fecaca',
-                        color: '#dc2626',
-                        backgroundColor: 'white',
-                        '&:hover': {
-                          backgroundColor: '#fef2f2',
-                        },
-                      }}
-                    >
-                      <DeleteOutlineOutlined sx={{ fontSize: 16, color: '#dc2626' }} />
-                    </CustomIconButton>
+                    <Tooltip title="Edit contact" arrow>
+                      <CustomIconButton
+                        size="small"
+                        onClick={() => openEditContactModal(contact)}
+                        sx={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: 999,
+                          border: `1px solid ${borderColor}`,
+                          color: '#64748b',
+                          backgroundColor: 'white',
+                        }}
+                      >
+                        <EditOutlined sx={{ fontSize: 16 }} />
+                      </CustomIconButton>
+                    </Tooltip>
+                    <Tooltip title="Delete contact" arrow>
+                      <CustomIconButton
+                        size="small"
+                        onClick={() => openDeleteContactModal(contact)}
+                        sx={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: 999,
+                          border: '1px solid #fecaca',
+                          color: '#dc2626',
+                          backgroundColor: 'white',
+                          '&:hover': {
+                            backgroundColor: '#fef2f2',
+                            borderColor: '#fecaca',
+                            color: '#dc2626',
+                          },
+                          '&:focus, &:focus-visible': {
+                            backgroundColor: '#fef2f2',
+                            borderColor: '#fecaca',
+                            color: '#dc2626',
+                          },
+                          '&.Mui-focusVisible': {
+                            backgroundColor: '#fef2f2',
+                            borderColor: '#fecaca',
+                            color: '#dc2626',
+                          },
+                        }}
+                      >
+                        <DeleteOutlineOutlined sx={{ fontSize: 16, color: '#dc2626' }} />
+                      </CustomIconButton>
+                    </Tooltip>
                   </Stack>
                 </Box>
                     </Box>
@@ -653,7 +729,7 @@ const ContactsPage = () => {
                 <CustomButton
                   variant="contained"
                   sx={{ borderRadius: 999, px: 2.25, mt: 1, textTransform: 'none' }}
-                  onClick={() => setIsAddCustomerOpen(true)}
+                  onClick={openAddContactModal}
                 >
                   Add Contact
                 </CustomButton>
@@ -737,14 +813,38 @@ const ContactsPage = () => {
         </Box>
       </Box>
 
+     {isAddCustomerOpen && ( 
       <AddCustomerModal
         open={isAddCustomerOpen}
-        onClose={() => setIsAddCustomerOpen(false)}
-        onSave={() => {
-          setPage(1);
+        mode={selectedContactForEdit ? 'edit' : 'add'}
+        initialData={selectedContactForEdit}
+        onClose={() => {
           setIsAddCustomerOpen(false);
-          setReloadKey((prev) => prev + 1);
+          setSelectedContactForEdit(null);
         }}
+        onSave={() => {
+          setIsAddCustomerOpen(false);
+          if (!selectedContactForEdit) {
+            setPage(1);
+          }
+          setReloadKey((prev) => prev + 1);
+          setSelectedContactForEdit(null);
+        }}
+      />)}
+
+      <ConfirmationAlertModal
+        open={isDeleteConfirmOpen}
+        variant="delete"
+        title="Delete contact?"
+        message="This action cannot be undone. Do you want to continue?"
+        confirmText="Yes, delete"
+        cancelText="No, keep it"
+        isConfirmLoading={isDeletingContact}
+        onClose={() => {
+          setIsDeleteConfirmOpen(false);
+          setSelectedContactForDelete(null);
+        }}
+        onConfirm={handleConfirmDeleteContact}
       />
     </Box>
   );

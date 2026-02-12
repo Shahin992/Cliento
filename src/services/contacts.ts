@@ -95,6 +95,14 @@ const contactDetailsInFlight = new Map<string, Promise<ApiResponse<ContactDetail
 export const createContact = (payload: CreateContactPayload): Promise<ApiResponse<unknown>> =>
   http.post<unknown, CreateContactPayload>('/api/contacts', payload);
 
+export const updateContact = (
+  contactId: string,
+  payload: CreateContactPayload,
+): Promise<ApiResponse<unknown>> => http.put<unknown, CreateContactPayload>(`/api/contacts/${contactId}`, payload);
+
+export const deleteContact = (contactId: string): Promise<ApiResponse<unknown>> =>
+  http.delete<unknown>(`/api/contacts/${contactId}`);
+
 export const getContacts = ({
   page,
   limit,

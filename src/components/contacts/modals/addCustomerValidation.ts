@@ -148,7 +148,9 @@ export const validateAddCustomerPayload = (
     return { success: false, message: 'You can submit up to 10 phone numbers.' };
   }
 
-  const normalizedPhones = form.phones.map((item) => item.trim()).filter(Boolean);
+  const normalizedPhones = form.phones
+    .map((item) => item.trim().replace(/\s+/g, ''))
+    .filter(Boolean);
   for (const phone of normalizedPhones) {
     if (phone.length < 7 || phone.length > 20) {
       return {

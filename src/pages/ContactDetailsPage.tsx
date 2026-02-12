@@ -1,10 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import {
   Avatar,
   Box,
   Button,
   Chip,
   Divider,
+  ListItemIcon,
+  ListItemText,
+  Menu,
+  MenuItem,
   Skeleton,
   Stack,
   Typography,
@@ -13,14 +17,19 @@ import {
   AlternateEmailOutlined,
   ArrowBack,
   CameraAltOutlined,
+  DeleteOutlineOutlined,
+  EditOutlined,
   LocationOnOutlined,
   MoreHoriz,
   SellOutlined,
 } from '@mui/icons-material';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
+import AddCustomerModal from '../components/contacts/modals/AddCustomerModal';
+import ConfirmationAlertModal from '../common/ConfirmationAlertModal';
+import { useToast } from '../common/ToastProvider';
 import { deals } from '../data/deals';
-import { getContactById, type ContactDetails } from '../services/contacts';
+import { deleteContact, getContactById, type ContactDetails } from '../services/contacts';
 
 const borderColor = '#e6eaf1';
 const mutedText = '#7e8796';
@@ -29,6 +38,12 @@ const primary = '#6d28ff';
 const tabs = ['Deals', 
   // 'Email', 'Notes'
 ];
+const detailLabelSx = { color: mutedText, fontSize: 13, minWidth: { xs: 'auto', lg: 104 }, flexShrink: 0 };
+const detailValueContainerSx = {
+  flex: { xs: '0 1 auto', lg: 1 },
+  minWidth: 0,
+  textAlign: { xs: 'right', lg: 'left' },
+};
 
 const normalize = (value?: string | null) => (value || '').trim().toLowerCase();
 
@@ -76,7 +91,14 @@ const ContactDetailsPage = () => {
   const [contact, setContact] = useState<ContactDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [actionsMenuAnchorEl, setActionsMenuAnchorEl] = useState<HTMLElement | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isDeletingContact, setIsDeletingContact] = useState(false);
   const requestIdRef = useRef(0);
+  const isActionsMenuOpen = Boolean(actionsMenuAnchorEl);
+  const { showToast } = useToast();
 
   useEffect(() => {
     const loadContact = async () => {
@@ -106,7 +128,58 @@ const ContactDetailsPage = () => {
     };
 
     void loadContact();
-  }, [contactId]);
+  }, [contactId, reloadKey]);
+
+  const handleOpenActionsMenu = (event: MouseEvent<HTMLElement>) => {
+    setActionsMenuAnchorEl(event.currentTarget);
+  };
+
+  const handleCloseActionsMenu = () => {
+    setActionsMenuAnchorEl(null);
+  };
+
+  const handleEditContact = () => {
+    handleCloseActionsMenu();
+    setIsEditModalOpen(true);
+  };
+
+  const handleDeleteContact = () => {
+    handleCloseActionsMenu();
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const handleConfirmDeleteContact = async () => {
+    if (!contact) {
+      setIsDeleteConfirmOpen(false);
+      return;
+    }
+
+    setIsDeletingContact(true);
+    try {
+      const response = await deleteContact(contact._id);
+      if (!response.success) {
+        showToast({
+          message: response.message || 'Failed to delete contact.',
+          severity: 'error',
+        });
+        return;
+      }
+
+      showToast({
+        message: response.message || 'Contact deleted successfully.',
+        severity: 'success',
+      });
+      setIsDeleteConfirmOpen(false);
+      navigate('/contacts');
+    } catch (error) {
+      showToast({
+        message: error instanceof Error ? error.message : 'Failed to delete contact.',
+        severity: 'error',
+      });
+    } finally {
+      setIsDeletingContact(false);
+    }
+  };
 
   const fullName = useMemo(() => {
     if (!contact) return '';
@@ -200,7 +273,10 @@ const ContactDetailsPage = () => {
             >
               Back
             </Button>
-            <Button sx={{ minWidth: 30, width: 30, height: 30, borderRadius: 1.5, border: `1px solid ${borderColor}` }}>
+            <Button
+              onClick={handleOpenActionsMenu}
+              sx={{ minWidth: 30, width: 30, height: 30, borderRadius: 1.5, border: `1px solid ${borderColor}` }}
+            >
               <MoreHoriz sx={{ color: '#4b5563', fontSize: 18 }} />
             </Button>
           </Box>
@@ -272,6 +348,38 @@ const ContactDetailsPage = () => {
             </Stack>
           </Box>
 
+          <Menu
+            anchorEl={actionsMenuAnchorEl}
+            open={isActionsMenuOpen}
+            onClose={handleCloseActionsMenu}
+            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+            slotProps={{
+              paper: {
+                sx: {
+                  mt: 0.5,
+                  borderRadius: 2,
+                  minWidth: 190,
+                  boxShadow: '0 16px 30px rgba(15, 23, 42, 0.14)',
+                  border: `1px solid ${borderColor}`,
+                },
+              },
+            }}
+          >
+            <MenuItem onClick={handleEditContact}>
+              <ListItemIcon>
+                <EditOutlined fontSize="small" />
+              </ListItemIcon>
+              <ListItemText primary="Edit Contact" />
+            </MenuItem>
+            <MenuItem onClick={handleDeleteContact} sx={{ color: '#dc2626' }}>
+              <ListItemIcon>
+                <DeleteOutlineOutlined fontSize="small" sx={{ color: '#dc2626' }} />
+              </ListItemIcon>
+              <ListItemText primary="Delete Contact" />
+            </MenuItem>
+          </Menu>
+
           <Divider />
 
           <Box sx={{ px: { xs: 1.5, sm: 2.5 }, borderBottom: `1px solid ${borderColor}` }}>
@@ -299,7 +407,11 @@ const ContactDetailsPage = () => {
           <Box
             sx={{
               display: 'grid',
-              gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1.35fr) minmax(260px, 1fr)', lg: 'minmax(0, 1.65fr) minmax(300px, 0.9fr)' },
+              gridTemplateColumns: {
+                xs: '1fr',
+                md: 'minmax(0, 1.55fr) minmax(240px, 320px)',
+                lg: 'minmax(0, 1.9fr) minmax(260px, 340px)',
+              },
               minHeight: 520,
             }}
           >
@@ -373,13 +485,35 @@ const ContactDetailsPage = () => {
                 <Box>
                   <Typography sx={{ fontWeight: 700, color: '#111827', fontSize: 14, mb: 1 }}>Details</Typography>
                   <Stack spacing={1.15}>
-                    <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={0.6}>
-                      <Typography sx={{ color: mutedText, fontSize: 13 }}>Type</Typography>
-                      <Chip size="small" label={contact.status || 'Lead'} sx={{ height: 22, fontWeight: 700, bgcolor: '#f3f4f6' }} />
+                    <Stack
+                      direction="row"
+                      alignItems="flex-start"
+                      justifyContent="space-between"
+                      spacing={{ xs: 0.75, lg: 1 }}
+                    >
+                      <Typography sx={detailLabelSx}>Type</Typography>
+                      <Chip
+                        size="small"
+                        label={contact.status || 'Lead'}
+                        sx={{
+                          height: 22,
+                          fontWeight: 700,
+                          bgcolor: '#f3f4f6',
+                          alignSelf: 'flex-start',
+                        }}
+                      />
                     </Stack>
-                    <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={0.6}>
-                      <Typography sx={{ color: mutedText, fontSize: 13 }}>Tags</Typography>
-                      <Box sx={{ display: 'flex', gap: 0.6, flexWrap: 'wrap' }}>
+                    <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={{ xs: 0.75, lg: 1 }}>
+                      <Typography sx={detailLabelSx}>Tags</Typography>
+                      <Box
+                        sx={{
+                          ...detailValueContainerSx,
+                          display: 'flex',
+                          gap: 0.6,
+                          flexWrap: 'wrap',
+                          justifyContent: { xs: 'flex-end', lg: 'flex-start' },
+                        }}
+                      >
                         {contactTags.length > 0 ? (
                           contactTags.map((tag) => (
                             <Chip
@@ -394,9 +528,9 @@ const ContactDetailsPage = () => {
                         )}
                       </Box>
                     </Stack>
-                    <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={0.6}>
-                      <Typography sx={{ color: mutedText, fontSize: 13 }}>Emails</Typography>
-                      <Stack spacing={0.35} alignItems={{ xs: 'flex-start', sm: 'flex-end' }}>
+                    <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={{ xs: 0.75, lg: 1 }}>
+                      <Typography sx={detailLabelSx}>Emails</Typography>
+                      <Stack spacing={0.4} alignItems={{ xs: 'flex-end', lg: 'flex-start' }} sx={detailValueContainerSx}>
                         {emailCount > 0 ? (
                           contact.emails.map((email, index) => (
                             <Typography
@@ -411,9 +545,9 @@ const ContactDetailsPage = () => {
                         )}
                       </Stack>
                     </Stack>
-                    <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={0.6}>
-                      <Typography sx={{ color: mutedText, fontSize: 13 }}>Phone numbers</Typography>
-                      <Stack spacing={0.2} alignItems={{ xs: 'flex-start', sm: 'flex-end' }}>
+                    <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={{ xs: 0.75, lg: 1 }}>
+                      <Typography sx={detailLabelSx}>Phone numbers</Typography>
+                      <Stack spacing={0.4} alignItems={{ xs: 'flex-end', lg: 'flex-start' }} sx={detailValueContainerSx}>
                         {phoneCount > 0 ? (
                           contact.phones.map((phone, index) => (
                             <Typography
@@ -428,9 +562,15 @@ const ContactDetailsPage = () => {
                         )}
                       </Stack>
                     </Stack>
-                    <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={0.6}>
-                      <Typography sx={{ color: mutedText, fontSize: 13 }}>Location</Typography>
-                      <Stack direction="row" spacing={0.5} alignItems="flex-start" sx={{ maxWidth: { xs: '100%', sm: 180 } }}>
+                    <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={{ xs: 0.75, lg: 1 }}>
+                      <Typography sx={detailLabelSx}>Location</Typography>
+                      <Stack
+                        direction="row"
+                        spacing={0.5}
+                        alignItems="flex-start"
+                        justifyContent={{ xs: 'flex-end', lg: 'flex-start' }}
+                        sx={detailValueContainerSx}
+                      >
                         <LocationOnOutlined sx={{ fontSize: 14, color: mutedText, mt: 0.1 }} />
                         <Typography sx={{ color: '#111827', fontSize: 13, fontWeight: 600, wordBreak: 'break-word' }}>
                           {formatAddress(contact)}
@@ -445,24 +585,30 @@ const ContactDetailsPage = () => {
                 <Box>
                   <Typography sx={{ fontWeight: 700, color: '#111827', fontSize: 14, mb: 1 }}>Enriched data</Typography>
                   <Stack spacing={1.15}>
-                    <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={0.6}>
-                      <Typography sx={{ color: mutedText, fontSize: 13 }}>Ownership</Typography>
-                      <Typography sx={{ color: '#111827', fontSize: 13, fontWeight: 600 }}>
+                    <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={{ xs: 0.75, lg: 1 }}>
+                      <Typography sx={detailLabelSx}>Ownership</Typography>
+                      <Typography sx={{ ...detailValueContainerSx, color: '#111827', fontSize: 13, fontWeight: 600 }}>
                         {contact.ownerDetails?.fullName || 'Home owner'}
                       </Typography>
                     </Stack>
-                    <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={0.6}>
-                      <Typography sx={{ color: mutedText, fontSize: 13 }}>Associated deals</Typography>
-                      <Stack direction="row" spacing={0.55} alignItems="center">
+                    <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={{ xs: 0.75, lg: 1 }}>
+                      <Typography sx={detailLabelSx}>Associated deals</Typography>
+                      <Stack
+                        direction="row"
+                        spacing={0.55}
+                        alignItems="center"
+                        justifyContent={{ xs: 'flex-end', lg: 'flex-start' }}
+                        sx={detailValueContainerSx}
+                      >
                         <SellOutlined sx={{ fontSize: 14, color: '#111827' }} />
                         <Typography sx={{ color: '#111827', fontSize: 13, fontWeight: 600 }}>
                           {associatedDeals.length} active {associatedDeals.length === 1 ? 'deal' : 'deals'}
                         </Typography>
                       </Stack>
                     </Stack>
-                    <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={0.6}>
-                      <Typography sx={{ color: mutedText, fontSize: 13 }}>Created</Typography>
-                      <Typography sx={{ color: '#111827', fontSize: 13, fontWeight: 600 }}>
+                    <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={{ xs: 0.75, lg: 1 }}>
+                      <Typography sx={detailLabelSx}>Created</Typography>
+                      <Typography sx={{ ...detailValueContainerSx, color: '#111827', fontSize: 13, fontWeight: 600 }}>
                         {formatDateTime(contact.createdAt)}
                       </Typography>
                     </Stack>
@@ -473,6 +619,33 @@ const ContactDetailsPage = () => {
           </Box>
         </Box>
       ) : null}
+
+      {contact ? (
+        <AddCustomerModal
+          open={isEditModalOpen}
+          mode="edit"
+          initialData={contact}
+          onClose={() => setIsEditModalOpen(false)}
+          onSave={() => {
+            setIsEditModalOpen(false);
+            setReloadKey((prev) => prev + 1);
+          }}
+        />
+      ) : null}
+
+     { isDeleteConfirmOpen && ( 
+      <ConfirmationAlertModal
+        open={isDeleteConfirmOpen}
+        variant="delete"
+        title="Delete contact?"
+        message="This action cannot be undone. Do you want to continue?"
+        confirmText="Yes, delete"
+        cancelText="No, keep it"
+        isConfirmLoading={isDeletingContact}
+        onClose={() => setIsDeleteConfirmOpen(false)}
+        onConfirm={handleConfirmDeleteContact}
+      />
+      )}
     </Box>
   );
 };

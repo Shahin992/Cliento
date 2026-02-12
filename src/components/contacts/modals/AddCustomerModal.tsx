@@ -5,13 +5,15 @@ import { AddOutlined, CloseOutlined, DeleteOutlineOutlined } from '@mui/icons-ma
 import { MuiTelInput } from 'mui-tel-input';
 
 import { CustomButton } from '../../../common/CustomButton';
-import { createContact } from '../../../services/contacts';
+import { createContact, type ContactListItem, updateContact } from '../../../services/contacts';
 import { uploadPhoto } from '../../../services/upload';
 import { useToast } from '../../../common/ToastProvider';
 import { validateAddCustomerPayload } from './addCustomerValidation';
 
 interface AddCustomerModalProps {
   open: boolean;
+  mode?: 'add' | 'edit';
+  initialData?: ContactListItem | null;
   onClose: () => void;
   onSave?: () => void | Promise<void>;
 }
@@ -81,8 +83,15 @@ const phoneInputSx = {
   },
 };
 
-const AddCustomerModal = ({ open, onClose, onSave }: AddCustomerModalProps) => {
+const AddCustomerModal = ({
+  open,
+  mode = 'add',
+  initialData = null,
+  onClose,
+  onSave,
+}: AddCustomerModalProps) => {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [existingPhotoUrl, setExistingPhotoUrl] = useState<string | undefined>(undefined);
   const [uploadedPhotoUrl, setUploadedPhotoUrl] = useState<string | undefined>(undefined);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -100,8 +109,8 @@ const AddCustomerModal = ({ open, onClose, onSave }: AddCustomerModalProps) => {
   const { showToast } = useToast();
 
   const avatarUrl = useMemo(
-    () => (avatarFile ? URL.createObjectURL(avatarFile) : DEFAULT_AVATAR),
-    [avatarFile],
+    () => (avatarFile ? URL.createObjectURL(avatarFile) : existingPhotoUrl || DEFAULT_AVATAR),
+    [avatarFile, existingPhotoUrl],
   );
 
   useEffect(() => {
@@ -114,8 +123,9 @@ const AddCustomerModal = ({ open, onClose, onSave }: AddCustomerModalProps) => {
     };
   }, [avatarFile, avatarUrl]);
 
-  const handleClose = () => {
+  const resetForm = () => {
     setAvatarFile(null);
+    setExistingPhotoUrl(undefined);
     setUploadedPhotoUrl(undefined);
     setFirstName('');
     setLastName('');
@@ -127,6 +137,35 @@ const AddCustomerModal = ({ open, onClose, onSave }: AddCustomerModalProps) => {
     setState('');
     setPostalCode('');
     setCountry('');
+  };
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    if (mode === 'edit' && initialData) {
+      setAvatarFile(null);
+      setExistingPhotoUrl(initialData.photoUrl?.trim() || undefined);
+      setUploadedPhotoUrl(undefined);
+      setFirstName(initialData.firstName ?? '');
+      setLastName(initialData.lastName ?? '');
+      setCompanyName(initialData.companyName ?? '');
+      setEmails(initialData.emails?.length ? [...initialData.emails] : ['']);
+      setPhoneNumbers(initialData.phones?.length ? [...initialData.phones] : ['']);
+      setStreet(initialData.address?.street ?? '');
+      setCity(initialData.address?.city ?? '');
+      setState(initialData.address?.state ?? '');
+      setPostalCode(initialData.address?.postalCode ?? '');
+      setCountry(initialData.address?.country ?? '');
+      return;
+    }
+
+    resetForm();
+  }, [open, mode, initialData]);
+
+  const handleClose = () => {
+    resetForm();
     onClose();
   };
 
@@ -223,7 +262,7 @@ const AddCustomerModal = ({ open, onClose, onSave }: AddCustomerModalProps) => {
         firstName,
         lastName,
         companyName,
-        photoUrl: uploadedPhotoUrl,
+        photoUrl: uploadedPhotoUrl ?? existingPhotoUrl,
         emails,
         phones: phoneNumbers,
         address: {
@@ -241,16 +280,41 @@ const AddCustomerModal = ({ open, onClose, onSave }: AddCustomerModalProps) => {
         return;
       }
 
-      const response = await createContact(validation.payload);
-      if (!response.success) {
-        showToast({
-          message: response.message || 'Failed to create contact.',
-          severity: 'error',
-        });
-        return;
-      }
+      if (mode === 'edit') {
+        const contactId = initialData?._id?.trim();
+        if (!contactId) {
+          showToast({ message: 'Missing contact id for update.', severity: 'error' });
+          return;
+        }
 
-      showToast({ message: response.message || 'Contact created successfully.', severity: 'success' });
+        const response = await updateContact(contactId, validation.payload);
+        if (!response.success) {
+          showToast({
+            message: response.message || 'Failed to update contact.',
+            severity: 'error',
+          });
+          return;
+        }
+
+        showToast({
+          message: response.message || 'Contact updated successfully.',
+          severity: 'success',
+        });
+      } else {
+        const response = await createContact(validation.payload);
+        if (!response.success) {
+          showToast({
+            message: response.message || 'Failed to create contact.',
+            severity: 'error',
+          });
+          return;
+        }
+
+        showToast({
+          message: response.message || 'Contact created successfully.',
+          severity: 'success',
+        });
+      }
       await onSave?.();
       handleClose();
     } catch (error) {
@@ -282,7 +346,7 @@ const AddCustomerModal = ({ open, onClose, onSave }: AddCustomerModalProps) => {
       >
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography id="add-customer-title" sx={{ fontWeight: 800, color: '#0f172a' }}>
-            Add New Customer
+            {mode === 'edit' ? 'Edit Contact' : 'Add New Customer'}
           </Typography>
           <IconButton
             size="small"
@@ -544,7 +608,7 @@ const AddCustomerModal = ({ open, onClose, onSave }: AddCustomerModalProps) => {
               fontWeight: 700,
             }}
           >
-            {isSaving ? 'Saving...' : 'Save Customer'}
+            {isSaving ? 'Saving...' : mode === 'edit' ? 'Save Changes' : 'Save Customer'}
           </CustomButton>
         </Box>
       </Box>
