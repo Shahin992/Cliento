@@ -92,31 +92,8 @@ const SignInPage = () => {
       });
       return;
     }
-
-    const accessToken = extractAccessToken(response);
-    if (accessToken) {
-      setCookie('cliento_token', accessToken, {
-        maxAgeMs: 2 * 24 * 60 * 60 * 1000,
-        secure: window.location.protocol === 'https:',
-        sameSite: 'Lax',
-      });
-    }
-
-    const profileResponse = await getMeProfile();
-    if (!profileResponse.success || !profileResponse.data) {
-      if (profileResponse.statusCode === 401 || profileResponse.statusCode === 403) {
-        removeCookie('cliento_token');
-      }
-      showToast({
-        message: profileResponse.message || 'Unable to load your profile. Please sign in again.',
-        severity: 'error',
-      });
-      return;
-    }
-
-    dispatch(setAuth({ user: profileResponse.data }));
-
-    navigate('/dashboard');
+    dispatch(setAuth({ user: response?.data }));
+     navigate('/dashboard');
   };
 
   return (

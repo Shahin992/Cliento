@@ -1,17 +1,20 @@
 import { Navigate, Outlet } from 'react-router-dom';
+import { Box, CircularProgress } from '@mui/material';
 import { useAppSelector } from '../app/hooks';
-import { getCookie } from '../utils/auth';
 
 const RequireAuth = () => {
   const user = useAppSelector((state) => state.auth.user);
   const initialized = useAppSelector((state) => state.auth.initialized);
-  const cookieToken = getCookie('cliento_token');
 
   if (!initialized) {
-    return null;
+    return (
+      <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}>
+        <CircularProgress size={24} />
+      </Box>
+    );
   }
 
-  if (!cookieToken && !user) {
+  if (!user) {
     return <Navigate to="/signin" replace />;
   }
 

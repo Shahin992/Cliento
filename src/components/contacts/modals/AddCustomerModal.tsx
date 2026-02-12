@@ -86,6 +86,7 @@ const AddCustomerModal = ({ open, onClose, onSave }: AddCustomerModalProps) => {
   const [uploadedPhotoUrl, setUploadedPhotoUrl] = useState<string | undefined>(undefined);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [companyName, setCompanyName] = useState('');
   const [emails, setEmails] = useState<string[]>(['']);
   const [phoneNumbers, setPhoneNumbers] = useState<string[]>(['']);
   const [street, setStreet] = useState('');
@@ -118,6 +119,7 @@ const AddCustomerModal = ({ open, onClose, onSave }: AddCustomerModalProps) => {
     setUploadedPhotoUrl(undefined);
     setFirstName('');
     setLastName('');
+    setCompanyName('');
     setEmails(['']);
     setPhoneNumbers(['']);
     setStreet('');
@@ -220,6 +222,7 @@ const AddCustomerModal = ({ open, onClose, onSave }: AddCustomerModalProps) => {
       const validation = validateAddCustomerPayload({
         firstName,
         lastName,
+        companyName,
         photoUrl: uploadedPhotoUrl,
         emails,
         phones: phoneNumbers,
@@ -367,6 +370,18 @@ const AddCustomerModal = ({ open, onClose, onSave }: AddCustomerModalProps) => {
               maxLength={30}
             />
           </Box>
+        </Box>
+
+        <Box>
+          <Typography sx={labelSx}>Company Name</Typography>
+          <Box
+            component="input"
+            sx={inputSx}
+            placeholder="Acme Inc."
+            value={companyName}
+            onChange={(event) => setCompanyName(event.target.value)}
+            maxLength={60}
+          />
         </Box>
 
         <Box sx={{ display: 'grid', gridTemplateColumns: '1fr', gap: 1.5 }}>

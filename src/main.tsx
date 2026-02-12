@@ -9,7 +9,7 @@ import { store } from './app/store';
 import { clearAuth, setAuth, setAuthInitialized } from './features/auth/authSlice';
 import theme from './theme';
 import { ToastProvider } from './common/ToastProvider';
-import { getCookie, removeCookie } from './utils/auth';
+import { removeCookie } from './utils/auth';
 import { getMeProfile } from './services/auth';
 import './index.css';
 
@@ -19,7 +19,6 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-const tokenCookie = getCookie('cliento_token');
 void (async () => {
   const response = await getMeProfile();
   if (response.success && response.data) {
@@ -28,9 +27,7 @@ void (async () => {
   }
 
   if (response.statusCode === 401 || response.statusCode === 403) {
-    if (tokenCookie) {
-      removeCookie('cliento_token');
-    }
+    removeCookie('cliento_token');
     store.dispatch(clearAuth());
     return;
   }

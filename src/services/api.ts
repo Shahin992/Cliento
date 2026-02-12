@@ -5,6 +5,9 @@ import axios, {
   AxiosHeaders,
 } from 'axios';
 import type { ApiResponse } from '../types/api';
+import { store } from '../app/store';
+import { clearAuth } from '../features/auth/authSlice';
+import { removeCookie } from '../utils/auth';
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_CLINTO_SERVER_BASE_URL ?? 'https://api.example.com',
@@ -53,6 +56,11 @@ const normalizeError = <TResponse>(
   if (axios.isAxiosError(error)) {
     const statusCode = error.response?.status ?? 0;
     const data = error.response?.data as Partial<ApiResponse<TResponse>> | undefined;
+
+    if (statusCode === 401 || statusCode === 403) {
+      removeCookie('cliento_token');
+      store.dispatch(clearAuth());
+    }
 
     return {
       success: false,

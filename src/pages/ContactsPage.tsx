@@ -1,35 +1,185 @@
-import { useState } from 'react';
-import type { SelectChangeEvent } from '@mui/material';
+import { useEffect, useRef, useState } from 'react';
 import { CustomIconButton as IconButton } from '../common/CustomIconButton';
 import {
   Avatar,
   Box,
+  InputAdornment,
   MenuItem,
+  Pagination,
+  Skeleton,
   Select,
   Stack,
+  TextField,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import {
+  DeleteOutlineOutlined,
   EditOutlined,
-  FilterAltOutlined,
   LocalOfferOutlined,
+  PersonOffOutlined,
+  SearchOutlined,
 } from '@mui/icons-material';
 import { Link } from 'react-router-dom';
 
 import PageHeader from '../components/PageHeader';
 import { CustomButton } from '../common/CustomButton';
 import AddCustomerModal from '../components/contacts/modals/AddCustomerModal';
-import { contacts } from '../data/contacts';
+import { getContacts, type ContactListItem } from '../services/contacts';
 
 const borderColor = '#e7edf6';
 const mutedText = '#8b95a7';
 const primary = '#6d28ff';
 const bgSoft = '#f8fbff';
+const DEFAULT_PAGE_SIZE = 5;
+const PAGE_LIMIT_OPTIONS = [5,10, 20, 50];
+
+const getContactInitials = (contact: ContactListItem) => {
+  const first = contact.firstName?.trim()?.[0] ?? '';
+  const last = contact.lastName?.trim()?.[0] ?? '';
+  const fromName = `${first}${last}`.toUpperCase();
+
+  if (fromName.length > 0) {
+    return fromName;
+  }
+
+  const fallback = contact.emails?.[0]?.trim()?.[0] ?? 'C';
+  return fallback.toUpperCase();
+};
+
+const ContactRowSkeleton = () => (
+  <Box
+    sx={{
+      display: { xs: 'flex', lg: 'grid' },
+      flexDirection: { xs: 'column', lg: 'unset' },
+      gridTemplateColumns:
+        'minmax(240px, 2.2fr) minmax(220px, 1.9fr) minmax(160px, 1.2fr) minmax(180px, 1.4fr) minmax(130px, 1fr)',
+      px: { xs: 1.5, sm: 2.5 },
+      py: { xs: 1.5, sm: 1.75 },
+      gap: { xs: 1.25, sm: 0 },
+      alignItems: { lg: 'center' },
+      borderRadius: { xs: 2, lg: 0 },
+      backgroundColor: { xs: '#f8fbff', lg: 'transparent' },
+      border: { xs: `1px solid ${borderColor}`, lg: 'none' },
+      mb: { xs: 1.25, lg: 0 },
+      borderBottom: `1px solid ${borderColor}`,
+    }}
+  >
+    <Stack direction="row" spacing={1.25} alignItems="center">
+      <Skeleton variant="circular" width={36} height={36} />
+      <Skeleton variant="text" width={150} height={24} />
+    </Stack>
+    <Skeleton variant="text" width={170} height={24} />
+    <Skeleton variant="text" width={120} height={24} />
+    <Skeleton variant="text" width={120} height={24} />
+    <Stack direction="row" spacing={0.75} justifyContent={{ xs: 'flex-start', lg: 'center' }}>
+      <Skeleton variant="circular" width={32} height={32} />
+      <Skeleton variant="circular" width={32} height={32} />
+    </Stack>
+  </Box>
+);
 
 const ContactsPage = () => {
-  const [sortBy, setSortBy] = useState('date-created');
-  const totalCustomers = 78;
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
+  const [contacts, setContacts] = useState<ContactListItem[]>([]);
+  const [totalCustomers, setTotalCustomers] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [serverLimit, setServerLimit] = useState(DEFAULT_PAGE_SIZE);
+  const [isLoadingContacts, setIsLoadingContacts] = useState(false);
+  const [contactsError, setContactsError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
+  const requestIdRef = useRef(0);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [limit]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery.trim());
+    }, 300);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [searchQuery]);
+
+  useEffect(() => {
+    const loadContacts = async () => {
+      const requestId = ++requestIdRef.current;
+      setIsLoadingContacts(true);
+      setContactsError(null);
+
+      const response = await getContacts({
+        page,
+        limit,
+        search: debouncedSearchQuery || undefined,
+      });
+
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
+
+      if (!response.success || !response.data) {
+        setContactsError(response.message || 'Failed to fetch contacts.');
+        setIsLoadingContacts(false);
+        return;
+      }
+
+      const pagination = response.data.pagination ?? {
+        page,
+        limit,
+        total: response.data.contacts?.length ?? 0,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPrevPage: false,
+      };
+      const serverPage = Math.max(1, Number(pagination.page) || page);
+      const parsedTotal = Number(pagination.total);
+      const parsedTotalPages = Number(pagination.totalPages);
+      const normalizedTotalPages = Math.max(1, parsedTotalPages || 1);
+      const normalizedLimit = Math.max(1, Number(pagination.limit) || limit);
+
+      setContacts(response.data.contacts ?? []);
+      setTotalCustomers((prev) => {
+        if (Number.isFinite(parsedTotal) && parsedTotal >= 0) {
+          if (serverPage > 1 && parsedTotal === 0 && prev > 0) {
+            return prev;
+          }
+          return parsedTotal;
+        }
+        return serverPage > 1 ? prev : 0;
+      });
+      setTotalPages((prev) => {
+        if (Number.isFinite(parsedTotalPages) && parsedTotalPages >= 1) {
+          if (serverPage > 1 && parsedTotalPages === 1 && prev > 1) {
+            return prev;
+          }
+          return parsedTotalPages;
+        }
+        return serverPage > 1 ? prev : normalizedTotalPages;
+      });
+      setServerLimit(normalizedLimit);
+      if (serverPage !== page) {
+        setPage(serverPage);
+      }
+      setIsLoadingContacts(false);
+    };
+
+    void loadContacts();
+  }, [page, debouncedSearchQuery, limit, reloadKey]);
+
+  const pageStart = totalCustomers === 0 ? 0 : (page - 1) * serverLimit + 1;
+  const pageEnd =
+    totalCustomers === 0 ? 0 : Math.min((page - 1) * serverLimit + contacts.length, totalCustomers);
 
   return (
     <Box
@@ -37,8 +187,10 @@ const ContactsPage = () => {
         width: '100%',
         maxWidth: '100%',
         px: { xs: 1.5, sm: 2, md: 3 },
-        pb: 4,
-        minHeight: { xs: 'calc(100vh - 96px)', sm: 'calc(100vh - 110px)' },
+        pb: 0,
+        height: { xs: 'calc(100vh - 136px)', sm: 'calc(100vh - 112px)' },
+        minHeight: 0,
+        overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
         gap: 2,
@@ -48,23 +200,54 @@ const ContactsPage = () => {
         title="Contacts"
         subtitle="Manage your contact list"
         action={
-          <CustomButton
-            variant="contained"
-            sx={{ borderRadius: 999, px: 2.5, textTransform: 'none' }}
-            onClick={() => setIsAddCustomerOpen(true)}
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={1}
+            sx={{ width: { xs: '100%', sm: 'auto' } }}
           >
-            Add Customer
-          </CustomButton>
+            <TextField
+              size="small"
+              placeholder="Search contacts"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              sx={{
+                minWidth: { xs: '100%', sm: 260 },
+                '& .MuiOutlinedInput-root': {
+                  height: 40,
+                  borderRadius: 999,
+                  backgroundColor: 'white',
+                },
+              }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchOutlined sx={{ color: mutedText, fontSize: 20 }} />
+                  </InputAdornment>
+                ),
+              }}
+            />
+            <CustomButton
+              variant="contained"
+              sx={{ borderRadius: 999, px: 2.5, textTransform: 'none' }}
+              onClick={() => setIsAddCustomerOpen(true)}
+            >
+              Add Contact
+            </CustomButton>
+          </Stack>
         }
       />
 
-      <Box
-        sx={{
-          width: '100%',
-          borderRadius: 3,
-          border: `1px solid ${borderColor}`,
-          backgroundColor: 'white',
+        <Box
+          sx={{
+            width: '100%',
+            borderRadius: 3,
+            border: `1px solid ${borderColor}`,
+            backgroundColor: 'white',
           overflow: 'hidden',
+          flex: 1,
+          minHeight: 0,
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
         <Stack
@@ -80,65 +263,24 @@ const ContactsPage = () => {
           }}
         >
           <Typography sx={{ fontWeight: 600, color: '#111827' }}>
-            Total: {totalCustomers} customers
+            Total: {totalCustomers} contacts
           </Typography>
-          <Stack
-            direction={{ xs: 'column', sm: 'row' }}
-            spacing={1}
-            alignItems={{ xs: 'stretch', sm: 'center' }}
-            sx={{ width: { xs: '100%', sm: 'auto' } }}
-          >
-            <Select
-              size="small"
-              value={sortBy}
-              onChange={(event: SelectChangeEvent) =>
-                setSortBy(event.target.value as string)
-              }
-              sx={{
-                minWidth: { xs: '100%', sm: 170 },
-                height: 36,
-                bgcolor: 'white',
-                borderRadius: 999,
-                '& .MuiSelect-select': {
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 0.5,
-                  pl: 2,
-                  py: 0.75,
-                },
-                '& fieldset': {
-                  borderColor,
-                },
-              }}
-            >
-              <MenuItem value="date-created">Sort by: Date Created</MenuItem>
-              <MenuItem value="name">Sort by: Name</MenuItem>
-              <MenuItem value="recent">Sort by: Recently Added</MenuItem>
-            </Select>
-            <CustomButton
-              variant="outlined"
-              customColor="#64748b"
-              startIcon={<FilterAltOutlined fontSize="small" />}
-              sx={{
-                height: 36,
-                borderRadius: 999,
-                px: 2,
-                minWidth: 96,
-                textTransform: 'none',
-                width: { xs: '100%', sm: 'auto' },
-              }}
-            >
-              Filter
-            </CustomButton>
-          </Stack>
         </Stack>
 
-        <Box sx={{ overflowX: { xs: 'visible', md: 'hidden' } }}>
+        <Box
+          sx={{
+            overflowX: 'hidden',
+            flex: 1,
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
           <Box
             sx={{
-              display: { xs: 'none', md: 'grid' },
+              display: { xs: 'none', lg: 'grid' },
               gridTemplateColumns:
-                'minmax(230px, 2.2fr) minmax(190px, 1.8fr) minmax(140px, 1.2fr) minmax(250px, 2.4fr) 56px',
+                'minmax(240px, 2.2fr) minmax(220px, 1.9fr) minmax(160px, 1.2fr) minmax(180px, 1.4fr) minmax(130px, 1fr)',
               px: 2.5,
               py: 1.5,
               color: mutedText,
@@ -155,43 +297,71 @@ const ContactsPage = () => {
             </Stack>
             <Box>Email</Box>
             <Box>Phone</Box>
-            <Box>Address</Box>
-            <Box textAlign="center">Edit</Box>
+            <Box>Company</Box>
+            <Box textAlign="center">Actions</Box>
           </Box>
 
-          <Box>
-            {contacts.map((contact, index) => (
-              <Box
-                key={`${contact.id}-${index}`}
-                sx={{
-                  display: { xs: 'flex', md: 'grid' },
-                  flexDirection: { xs: 'column', md: 'unset' },
-                  gridTemplateColumns:
-                    'minmax(230px, 2.2fr) minmax(190px, 1.8fr) minmax(140px, 1.2fr) minmax(250px, 2.4fr) 56px',
-                  px: { xs: 1.5, sm: 2.5 },
-                  py: { xs: 1.5, sm: 1.75 },
-                  gap: { xs: 1.5, sm: 0 },
-                  alignItems: { md: 'center' },
-                  borderRadius: { xs: 2, md: 0 },
-                  backgroundColor: { xs: '#f8fbff', md: 'transparent' },
-                  borderBottom:
-                    index === contacts.length - 1 ? 'none' : `1px solid ${borderColor}`,
-                  boxShadow: {
-                    xs: '0 10px 20px rgba(15, 23, 42, 0.08)',
-                    md: 'none',
-                  },
-                  border: { xs: `1px solid ${borderColor}`, md: 'none' },
-                  mb: { xs: 1.25, md: 0 },
-                }}
-              >
+          <Box
+            sx={{
+              flex: 1,
+              minHeight: 0,
+              overflowY: 'auto',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+              '&::-webkit-scrollbar': {
+                display: 'none',
+              },
+            }}
+          >
+            {isLoadingContacts ? (
+              <Box sx={{ px: { xs: 0, lg: 0 }, py: { xs: 0.5, lg: 0 } }}>
+                {Array.from({ length: Math.max(3, Math.min(limit, 8)) }).map((_, index) => (
+                  <ContactRowSkeleton key={`contact-skeleton-${index}`} />
+                ))}
+              </Box>
+            ) : null}
+            {!isLoadingContacts
+              ? contacts.map((contact, index) => {
+                  const displayName =
+                    [contact.firstName, contact.lastName].filter(Boolean).join(' ') || '-';
+                  const displayEmail = contact.emails?.[0] || '-';
+                  const displayPhone = contact.phones?.[0] || '-';
+
+                  return (
+                    <Box
+                      key={`${contact._id}-${index}`}
+                      sx={{
+                        display: { xs: 'flex', lg: 'grid' },
+                        flexDirection: { xs: 'column', lg: 'unset' },
+                        gridTemplateColumns:
+                          'minmax(240px, 2.2fr) minmax(220px, 1.9fr) minmax(160px, 1.2fr) minmax(180px, 1.4fr) minmax(130px, 1fr)',
+                        px: { xs: 1.5, sm: 2.5 },
+                        py: { xs: 1.5, sm: 1.75 },
+                        gap: { xs: 1.5, sm: 0 },
+                        alignItems: { lg: 'center' },
+                        borderRadius: { xs: 2, lg: 0 },
+                        backgroundColor: { xs: '#f8fbff', lg: 'transparent' },
+                        borderBottom:
+                          index === contacts.length - 1
+                            ? 'none'
+                            : `1px solid ${borderColor}`,
+                        boxShadow: {
+                          xs: '0 10px 20px rgba(15, 23, 42, 0.08)',
+                          lg: 'none',
+                        },
+                        border: { xs: `1px solid ${borderColor}`, lg: 'none' },
+                        mb: { xs: 1.25, lg: 0 },
+                      }}
+                    >
                 <Stack
                   direction="row"
                   spacing={1.5}
                   alignItems="center"
-                  justifyContent="space-between"
+                  justifyContent="flex-start"
                 >
                   <Stack direction="row" spacing={1.5} alignItems="center">
                   <Avatar
+                    src={contact.photoUrl || undefined}
                     sx={{
                       width: 36,
                       height: 36,
@@ -201,132 +371,279 @@ const ContactsPage = () => {
                       fontSize: 13,
                     }}
                   >
-                    {contact.avatar}
+                    {getContactInitials(contact)}
                   </Avatar>
-                  <Typography
-                    component={Link}
-                    to={`/contacts/${contact.id}`}
-                    sx={{
-                      fontWeight: 600,
-                      color: '#1f2937',
-                      textDecoration: 'none',
-                      '&:hover': { color: primary },
-                    }}
+                  <Tooltip
+                    title={displayName}
+                    arrow
+                    disableHoverListener={displayName.length <= 26}
                   >
-                    {contact.name}
-                  </Typography>
+                    <Typography
+                      component={Link}
+                      to={`/contacts/${contact._id}`}
+                      sx={{
+                        fontWeight: 600,
+                        color: '#1f2937',
+                        textDecoration: 'none',
+                        display: 'inline-block',
+                        maxWidth: { xs: 'calc(100vw - 140px)', lg: 220 },
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        '&:hover': { color: primary },
+                      }}
+                    >
+                      {displayName}
+                    </Typography>
+                  </Tooltip>
                   </Stack>
-                  <IconButton
-                    size="small"
-                    sx={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: 999,
-                      border: `1px solid ${borderColor}`,
-                      color: '#64748b',
-                      backgroundColor: 'white',
-                      display: { xs: 'flex', md: 'none' },
-                    }}
-                  >
-                    <EditOutlined sx={{ fontSize: 16 }} />
-                  </IconButton>
                 </Stack>
 
                 <Box
                   sx={{
-                    display: { xs: 'flex', md: 'block' },
-                    justifyContent: { xs: 'space-between', md: 'flex-start' },
-                    alignItems: { xs: 'center', md: 'flex-start' },
+                    display: { xs: 'flex', lg: 'block' },
+                    justifyContent: { xs: 'space-between', lg: 'flex-start' },
+                    alignItems: { xs: 'center', lg: 'flex-start' },
                   }}
                 >
                   <Typography
                     variant="caption"
-                    sx={{ color: mutedText, display: { xs: 'block', md: 'none' } }}
+                    sx={{ color: mutedText, display: { xs: 'block', lg: 'none' } }}
                   >
                     Email
                   </Typography>
-                  <Typography sx={{ fontWeight: 600, color: '#1f2937' }}>
-                    {contact.email}
-                  </Typography>
+                  <Tooltip
+                    title={displayEmail}
+                    arrow
+                    disableHoverListener={displayEmail.length <= 28}
+                  >
+                    <Typography
+                      sx={{
+                        fontWeight: 600,
+                        color: '#1f2937',
+                        maxWidth: { xs: '65%', lg: 240 },
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {displayEmail}
+                    </Typography>
+                  </Tooltip>
                 </Box>
 
                 <Box
                   sx={{
-                    display: { xs: 'flex', md: 'block' },
-                    justifyContent: { xs: 'space-between', md: 'flex-start' },
-                    alignItems: { xs: 'center', md: 'flex-start' },
+                    display: { xs: 'flex', lg: 'block' },
+                    justifyContent: { xs: 'space-between', lg: 'flex-start' },
+                    alignItems: { xs: 'center', lg: 'flex-start' },
                   }}
                 >
                   <Typography
                     variant="caption"
-                    sx={{ color: mutedText, display: { xs: 'block', md: 'none' } }}
+                    sx={{ color: mutedText, display: { xs: 'block', lg: 'none' } }}
                   >
                     Phone
                   </Typography>
-                  <Typography sx={{ fontWeight: 600, color: '#1f2937' }}>
-                    {contact.phone}
-                  </Typography>
+                  <Tooltip
+                    title={displayPhone}
+                    arrow
+                    disableHoverListener={displayPhone.length <= 18}
+                  >
+                    <Typography
+                      sx={{
+                        fontWeight: 600,
+                        color: '#1f2937',
+                        maxWidth: { xs: '65%', lg: 180 },
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {displayPhone}
+                    </Typography>
+                  </Tooltip>
                 </Box>
 
                 <Box
                   sx={{
-                    display: { xs: 'flex', md: 'block' },
-                    justifyContent: { xs: 'space-between', md: 'flex-start' },
-                    alignItems: { xs: 'center', md: 'flex-start' },
+                    display: { xs: 'flex', lg: 'block' },
+                    justifyContent: { xs: 'space-between', lg: 'flex-start' },
+                    alignItems: { xs: 'center', lg: 'flex-start' },
                   }}
                 >
                   <Typography
                     variant="caption"
-                    sx={{ color: mutedText, display: { xs: 'block', md: 'none' } }}
+                    sx={{ color: mutedText, display: { xs: 'block', lg: 'none' } }}
                   >
-                    Address
+                    Company
                   </Typography>
-                  <Typography sx={{ fontWeight: 600, color: '#1f2937' }}>
-                    {contact.address}
+                  <Typography sx={{ fontWeight: 600, color: '#1f2937', wordBreak: 'break-word' }}>
+                    {contact.companyName || '-'}
                   </Typography>
                 </Box>
 
                 <Box
                   sx={{
                     display: 'flex',
-                    justifyContent: { xs: 'flex-end', md: 'center' },
+                    justifyContent: { xs: 'flex-end', lg: 'center' },
                   }}
                 >
-                  <IconButton
-                    size="small"
-                    sx={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: 999,
-                      border: `1px solid ${borderColor}`,
-                      color: '#64748b',
-                      backgroundColor: 'white',
-                      display: { xs: 'none', md: 'inline-flex' },
-                    }}
-                  >
-                    <EditOutlined sx={{ fontSize: 16 }} />
-                  </IconButton>
+                  <Stack direction="row" spacing={0.75}>
+                    <IconButton
+                      size="small"
+                      sx={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 999,
+                        border: `1px solid ${borderColor}`,
+                        color: '#64748b',
+                        backgroundColor: 'white',
+                      }}
+                    >
+                      <EditOutlined sx={{ fontSize: 16 }} />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      sx={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 999,
+                        border: '1px solid #fecaca',
+                        color: '#dc2626',
+                        backgroundColor: 'white',
+                        '&:hover': {
+                          backgroundColor: '#fef2f2',
+                        },
+                      }}
+                    >
+                      <DeleteOutlineOutlined sx={{ fontSize: 16, color: '#dc2626' }} />
+                    </IconButton>
+                  </Stack>
                 </Box>
+                    </Box>
+                  );
+                })
+              : null}
+            {!isLoadingContacts && contactsError ? (
+              <Box sx={{ px: 2.5, py: 4 }}>
+                <Typography sx={{ color: '#ef4444' }}>{contactsError}</Typography>
               </Box>
-            ))}
+            ) : null}
+            {!isLoadingContacts && !contactsError && contacts.length === 0 ? (
+              <Box
+                sx={{
+                  px: 2.5,
+                  py: 8,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  textAlign: 'center',
+                  gap: 1,
+                }}
+              >
+                <PersonOffOutlined sx={{ fontSize: 40, color: '#94a3b8' }} />
+                <Typography sx={{ fontWeight: 700, color: '#0f172a' }}>
+                  No contacts found
+                </Typography>
+                <Typography sx={{ color: mutedText, maxWidth: 420 }}>
+                  {searchQuery.trim()
+                    ? 'Try a different name, email, or phone search.'
+                    : 'Create your first contact to get started.'}
+                </Typography>
+                <CustomButton
+                  variant="contained"
+                  sx={{ borderRadius: 999, px: 2.25, mt: 1, textTransform: 'none' }}
+                  onClick={() => setIsAddCustomerOpen(true)}
+                >
+                  Add Contact
+                </CustomButton>
+              </Box>
+            ) : null}
           </Box>
         </Box>
 
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 2.5 }}>
-          <CustomButton
-            variant="outlined"
-            customColor="#94a3b8"
-            sx={{ borderRadius: 999, px: 3, textTransform: 'none' }}
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: { xs: 'flex-start', sm: 'center' },
+            gap: 2,
+            px: { xs: 1.5, sm: 2.5 },
+            py: 2,
+            borderTop: `1px solid ${borderColor}`,
+            backgroundColor: 'white',
+            flexWrap: 'wrap',
+          }}
+        >
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ width: { xs: '100%', sm: 'auto' } }}>
+            <Typography sx={{ color: mutedText, fontSize: 13 }}>Rows per page</Typography>
+            <Select
+              size="small"
+              value={String(limit)}
+              onChange={(event) => setLimit(Number(event.target.value))}
+              disabled={isLoadingContacts}
+              sx={{
+                minWidth: 84,
+                height: 32,
+                borderRadius: 999,
+                '& .MuiSelect-select': {
+                  py: 0.5,
+                  px: 1.25,
+                },
+              }}
+            >
+              {PAGE_LIMIT_OPTIONS.map((option) => (
+                <MenuItem key={option} value={option}>
+                  {option}
+                </MenuItem>
+              ))}
+            </Select>
+          </Stack>
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={1.25}
+            alignItems={{ xs: 'flex-start', sm: 'center' }}
+            sx={{ ml: { xs: 0, sm: 'auto' }, width: { xs: '100%', sm: 'auto' } }}
           >
-            Load More
-          </CustomButton>
+            <Typography sx={{ color: mutedText, fontSize: 13 }}>
+              {totalCustomers === 0
+                ? '0 results'
+                : `${pageStart}-${pageEnd} of ${totalCustomers}`}
+            </Typography>
+            <Pagination
+              page={page}
+              count={totalPages}
+              onChange={(_, value) => {
+                if (value !== page) {
+                  setPage(value);
+                }
+              }}
+              disabled={isLoadingContacts || totalPages <= 1}
+              shape="rounded"
+              size="small"
+              color="primary"
+              siblingCount={0}
+              boundaryCount={1}
+              sx={{
+                alignSelf: { xs: 'center', sm: 'auto' },
+                '& .MuiPaginationItem-root': {
+                  borderRadius: 999,
+                },
+              }}
+            />
+          </Stack>
         </Box>
       </Box>
 
       <AddCustomerModal
         open={isAddCustomerOpen}
         onClose={() => setIsAddCustomerOpen(false)}
-        onSave={() => setIsAddCustomerOpen(false)}
+        onSave={() => {
+          setPage(1);
+          setIsAddCustomerOpen(false);
+          setReloadKey((prev) => prev + 1);
+        }}
       />
     </Box>
   );

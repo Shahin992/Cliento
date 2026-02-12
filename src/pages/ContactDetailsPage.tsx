@@ -10,7 +10,7 @@ import { borderColor } from '../components/contacts/details/contactStyles';
 
 const ContactDetailsPage = () => {
   const { contactId } = useParams();
-  const contact = contacts.find((item) => item.id === contactId) ?? contacts[0];
+  const contact = contacts.find((item) => item.id === contactId);
 
   if (!contact) {
     return (

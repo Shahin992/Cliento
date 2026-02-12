@@ -11,6 +11,7 @@ type OptionalTextRule = {
 export type AddCustomerFormValues = {
   firstName: string;
   lastName: string;
+  companyName: string;
   photoUrl?: string;
   emails: string[];
   phones: string[];
@@ -104,6 +105,15 @@ export const validateAddCustomerPayload = (
   });
   if (lastNameValidation.error) {
     return { success: false, message: lastNameValidation.error };
+  }
+
+  const companyNameValidation = validateOptionalText({
+    label: 'Company name',
+    value: form.companyName,
+    maxLength: 60,
+  });
+  if (companyNameValidation.error) {
+    return { success: false, message: companyNameValidation.error };
   }
 
   const photoUrl = form.photoUrl?.trim();
@@ -222,6 +232,7 @@ export const validateAddCustomerPayload = (
   const payload: CreateContactPayload = {
     firstName,
     ...(lastNameValidation.value ? { lastName: lastNameValidation.value } : {}),
+    ...(companyNameValidation.value ? { companyName: companyNameValidation.value } : {}),
     ...(photoUrl ? { photoUrl } : {}),
     ...(emails.length ? { emails } : {}),
     ...(phones.length ? { phones } : {}),
