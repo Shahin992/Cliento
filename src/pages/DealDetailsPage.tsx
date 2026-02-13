@@ -2,7 +2,7 @@ import { Box, Typography } from '@mui/material';
 import { useParams } from 'react-router-dom';
 
 import ActivityLog from '../components/deals/details/ActivityLog';
-import DealCustomerBar from '../components/deals/details/DealCustomerBar';
+import DealContactBar from '../components/deals/details/DealContactBar';
 import DealInfoSection from '../components/deals/details/DealInfoSection';
 import DealSummaryCard from '../components/deals/details/DealSummaryCard';
 import RecordActivityCard from '../components/deals/details/RecordActivityCard';
@@ -41,7 +41,7 @@ const DealDetailsPage = () => {
           overflow: 'hidden',
         }}
       >
-        <DealCustomerBar customer={deal.customer} email={deal.email} phone={deal.phone} />
+        <DealContactBar customer={deal.customer} email={deal.email} phone={deal.phone} />
         <Box
           sx={{
             display: 'grid',

@@ -2,7 +2,7 @@ import { Box } from '@mui/material';
 
 import {
   ActivityCard,
-  CustomersCard,
+  ContactsCard,
   NextAppointmentCard,
   RecentDealsCard,
   StatCard,
@@ -47,7 +47,7 @@ const DashboardPage = () => (
         }}
       >
         <NextAppointmentCard />
-        <StatCard label="Customers" value="78" color="#34d399" />
+        <StatCard label="Contacts" value="78" color="#34d399" />
         <StatCard label="Deals" value="136" color="#f97316" />
       </Box>
 
@@ -77,7 +77,7 @@ const DashboardPage = () => (
           justifyContent: { xs: 'flex-start', md: 'space-between' },
         }}
       >
-        <CustomersCard />
+        <ContactsCard />
         <TasksCard />
       </Box>
     </Box>

@@ -6,13 +6,15 @@ import ProfileOverviewCard from '../components/profile/ProfileOverviewCard';
 import AccountDetailsSection from '../components/profile/AccountDetailsSection';
 import ChangePasswordSection from '../components/profile/ChangePasswordSection';
 import type { PasswordState, ProfileState } from '../components/profile/types';
-import { http } from '../services/api';
-import { changePassword } from '../services/auth';
-import { updateProfileDetails } from '../services/profile';
-import { uploadPhoto } from '../services/upload';
 import { useAppDispatch, useAppSelector } from '../app/hooks';
 import { setAuth } from '../features/auth/authSlice';
 import { useToast } from '../common/ToastProvider';
+import {
+  useChangePasswordMutation,
+  useUpdateProfilePhotoMutation,
+} from '../hooks/auth/useAuthMutations';
+import { useUpdateProfileDetailsMutation } from '../hooks/profile/useProfileMutations';
+import { useUploadPhotoMutation } from '../hooks/upload/useUploadMutations';
 
 type AccountDraft = Pick<
   ProfileState,
@@ -50,9 +52,6 @@ const ProfilePage = () => {
     buildProfileState(authUser as ProfileState | null)
   );
 
-  const [isAvatarUploading, setIsAvatarUploading] = useState(false);
-  const [isProfileUpdating, setIsProfileUpdating] = useState(false);
-  const [isPasswordUpdating, setIsPasswordUpdating] = useState(false);
   const [passwords, setPasswords] = useState<PasswordState>({
     current: '',
     next: '',
@@ -66,6 +65,10 @@ const ProfilePage = () => {
   const [accountDraft, setAccountDraft] = useState<AccountDraft>(() =>
     getAccountDraft(buildProfileState(authUser as ProfileState | null))
   );
+  const { uploadPhoto, loading: isAvatarUploading } = useUploadPhotoMutation();
+  const { updateProfilePhoto } = useUpdateProfilePhotoMutation();
+  const { updateProfileDetails, loading: isProfileUpdating } = useUpdateProfileDetailsMutation();
+  const { changePassword, loading: isPasswordUpdating } = useChangePasswordMutation();
 
   useEffect(() => {
     const nextProfile = buildProfileState(authUser as ProfileState | null);
@@ -85,43 +88,23 @@ const ProfilePage = () => {
     const previewUrl = URL.createObjectURL(file);
 
     setProfile((prev) => ({ ...prev, profilePhoto: previewUrl }));
-    setIsAvatarUploading(true);
 
     try {
-      const response = await uploadPhoto({ file, folder: 'profile' });
-      if (response.success && response.data?.url) {
-        const photoUrl = response.data.url;
-        const patchResponse = await http.patch<unknown, { profilePhoto: string }>(
-          '/api/users/profile-photo',
-          { profilePhoto: photoUrl }
-        );
-
-        if (patchResponse.success) {
-          setProfile((prev) => ({ ...prev, profilePhoto: photoUrl }));
-          if (authUser) {
-            dispatch(
-              setAuth({
-                user: { ...authUser, profilePhoto: photoUrl },
-              })
-            );
-          }
-          URL.revokeObjectURL(previewUrl);
-        } else {
-          showToast({
-            message: patchResponse.message || 'Failed to update profile photo.',
-            severity: 'error',
-          });
-          setProfile((prev) => ({ ...prev, profilePhoto: previousPhoto }));
-          URL.revokeObjectURL(previewUrl);
-        }
-      } else {
-        showToast({
-          message: response.message || 'Upload failed. Please try again.',
-          severity: 'error',
-        });
-        setProfile((prev) => ({ ...prev, profilePhoto: previousPhoto }));
-        URL.revokeObjectURL(previewUrl);
+      const uploadResponse = await uploadPhoto({ file, folder: 'profile' });
+      if (!uploadResponse?.url) {
+        throw new Error('Upload failed. Please try again.');
       }
+      const photoUrl = uploadResponse.url;
+      await updateProfilePhoto({ profilePhoto: photoUrl });
+      setProfile((prev) => ({ ...prev, profilePhoto: photoUrl }));
+      if (authUser) {
+        dispatch(
+          setAuth({
+            user: { ...authUser, profilePhoto: photoUrl },
+          })
+        );
+      }
+      URL.revokeObjectURL(previewUrl);
     } catch (error) {
       showToast({
         message: error instanceof Error ? error.message : 'Upload failed.',
@@ -129,8 +112,6 @@ const ProfilePage = () => {
       });
       setProfile((prev) => ({ ...prev, profilePhoto: previousPhoto }));
       URL.revokeObjectURL(previewUrl);
-    } finally {
-      setIsAvatarUploading(false);
     }
   };
 
@@ -223,9 +204,8 @@ const ProfilePage = () => {
             }
 
             const applyUpdates = async () => {
-              setIsProfileUpdating(true);
               try {
-                const response = await updateProfileDetails({
+                await updateProfileDetails({
                   fullName: nextProfile.fullName,
                   companyName: nextProfile.companyName,
                   phoneNumber: nextProfile.phoneNumber,
@@ -233,7 +213,6 @@ const ProfilePage = () => {
                   timeZone: nextProfile.timeZone ?? '',
                 });
 
-              if (response.success) {
                 setProfile(nextProfile);
                 if (authUser) {
                   dispatch(
@@ -251,20 +230,12 @@ const ProfilePage = () => {
                 }
                 setIsAccountEditing(false);
                 showToast({ message: 'Profile updated successfully.', severity: 'success' });
-                } else {
-                  showToast({
-                    message: response.message || 'Failed to update profile.',
-                    severity: 'error',
-                  });
-                }
               } catch (error) {
                 showToast({
                   message:
                     error instanceof Error ? error.message : 'Failed to update profile.',
                   severity: 'error',
                 });
-              } finally {
-                setIsProfileUpdating(false);
               }
             };
 
@@ -310,29 +281,19 @@ const ProfilePage = () => {
             }
 
             const applyPasswordChange = async () => {
-              setIsPasswordUpdating(true);
               try {
-                const response = await changePassword({
+                await changePassword({
                   currentPassword: trimmed.current,
                   newPassword: trimmed.next,
                 });
-                if (response.success) {
-                  showToast({ message: 'Password updated successfully.', severity: 'success' });
-                  setPasswords({ current: '', next: '', confirm: '' });
-                } else {
-                  showToast({
-                    message: response.message || 'Failed to update password.',
-                    severity: 'error',
-                  });
-                }
+                showToast({ message: 'Password updated successfully.', severity: 'success' });
+                setPasswords({ current: '', next: '', confirm: '' });
               } catch (error) {
                 showToast({
                   message:
                     error instanceof Error ? error.message : 'Failed to update password.',
                   severity: 'error',
                 });
-              } finally {
-                setIsPasswordUpdating(false);
               }
             };
 

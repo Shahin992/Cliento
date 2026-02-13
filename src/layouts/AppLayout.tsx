@@ -14,7 +14,7 @@ import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 import PwaInstallButton from '../components/PwaInstallButton';
 import AddDealModal from '../components/deals/modals/AddDealModal';
-import AddCustomerModal from '../components/contacts/modals/AddCustomerModal';
+import AddContactModal from '../components/contacts/modals/AddContactModal';
 import { pipelines as seedPipelines } from '../data/pipelines';
 
 const drawerWidth = 240;
@@ -95,7 +95,7 @@ const AppLayout = () => {
       />
       )}
      {isAddContactOpen && ( 
-      <AddCustomerModal
+      <AddContactModal
         open={isAddContactOpen}
         onClose={() => setIsAddContactOpen(false)}
         onSave={() => setIsAddContactOpen(false)}

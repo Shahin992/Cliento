@@ -30,7 +30,7 @@ import { useAppSelector } from '../app/hooks';
 import { useAppDispatch } from '../app/hooks';
 import { clearAuth } from '../features/auth/authSlice';
 import { removeCookie } from '../utils/auth';
-import { logout } from '../services/auth';
+import { useLogoutMutation } from '../hooks/auth/useAuthMutations';
 
 interface TopbarProps {
   isMobile: boolean;
@@ -52,6 +52,7 @@ const Topbar = ({
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
+  const { logout } = useLogoutMutation();
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
   const [addMenuAnchorEl, setAddMenuAnchorEl] = React.useState<null | HTMLElement>(null);

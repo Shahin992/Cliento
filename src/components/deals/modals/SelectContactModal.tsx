@@ -6,36 +6,36 @@ import { CloseOutlined, ChevronRightOutlined } from '@mui/icons-material';
 import { contacts } from '../../../data/contacts';
 import { inputSx, mutedText, primary } from './dealModalStyles';
 
-interface SelectCustomerModalProps {
+interface SelectContactModalProps {
   open: boolean;
   onClose: () => void;
-  onSelect?: (customerId: string) => void;
+  onSelect?: (contactId: string) => void;
   onAddNew?: () => void;
 }
 
-const SelectCustomerModal = ({
+const SelectContactModal = ({
   open,
   onClose,
   onSelect,
   onAddNew,
-}: SelectCustomerModalProps) => {
+}: SelectContactModalProps) => {
   const [query, setQuery] = useState('');
 
-  const filteredCustomers = useMemo(() => {
+  const filteredContacts = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     if (!normalized) {
       return contacts;
     }
 
     return contacts.filter(
-      (customer) =>
-        customer.name.toLowerCase().includes(normalized) ||
-        customer.email.toLowerCase().includes(normalized),
+      (contact) =>
+        contact.name.toLowerCase().includes(normalized) ||
+        contact.email.toLowerCase().includes(normalized),
     );
   }, [query]);
 
   return (
-    <Modal open={open} onClose={onClose} aria-labelledby="select-customer-title">
+    <Modal open={open} onClose={onClose} aria-labelledby="select-contact-title">
       <Box
         sx={{
           position: 'absolute',
@@ -52,8 +52,8 @@ const SelectCustomerModal = ({
         }}
       >
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography id="select-customer-title" sx={{ fontWeight: 800, color: '#0f172a' }}>
-            Select Customer
+          <Typography id="select-contact-title" sx={{ fontWeight: 800, color: '#0f172a' }}>
+            Select Contact
           </Typography>
           <Stack direction="row" spacing={1} alignItems="center">
             <Typography
@@ -83,16 +83,16 @@ const SelectCustomerModal = ({
           <Box
             component="input"
             sx={inputSx}
-            placeholder="Search customer"
+            placeholder="Search contact"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
         </Box>
 
         <Stack spacing={1.25} sx={{ mt: 2 }}>
-          {filteredCustomers.slice(0, 6).map((customer) => (
+          {filteredContacts.slice(0, 6).map((contact) => (
             <Stack
-              key={customer.id}
+              key={contact.id}
               direction="row"
               spacing={1.25}
               alignItems="center"
@@ -102,7 +102,7 @@ const SelectCustomerModal = ({
                 cursor: 'pointer',
                 '&:hover': { backgroundColor: '#f8fbff' },
               }}
-              onClick={() => onSelect?.(customer.id)}
+              onClick={() => onSelect?.(contact.id)}
             >
               <Avatar
                 sx={{
@@ -114,22 +114,22 @@ const SelectCustomerModal = ({
                   fontSize: 13,
                 }}
               >
-                {customer.avatar}
+                {contact.avatar}
               </Avatar>
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Typography sx={{ fontWeight: 700, color: '#0f172a' }}>
-                  {customer.name}
+                  {contact.name}
                 </Typography>
                 <Typography variant="caption" sx={{ color: mutedText }}>
-                  {customer.email}
+                  {contact.email}
                 </Typography>
               </Box>
               <ChevronRightOutlined sx={{ color: primary, fontSize: 18 }} />
             </Stack>
           ))}
-          {filteredCustomers.length === 0 ? (
+          {filteredContacts.length === 0 ? (
             <Typography variant="caption" sx={{ color: mutedText, textAlign: 'center' }}>
-              No customers found.
+              No contacts found.
             </Typography>
           ) : null}
         </Stack>
@@ -144,4 +144,4 @@ const SelectCustomerModal = ({
   );
 };
 
-export default SelectCustomerModal;
+export default SelectContactModal;

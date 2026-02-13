@@ -27,7 +27,7 @@ const features = [
     icon: <ViewKanbanOutlined />,
   },
   {
-    title: 'Customer intelligence',
+    title: 'Contact intelligence',
     description: 'Every contact, note, and activity in one place.',
     icon: <PeopleAltOutlined />,
   },

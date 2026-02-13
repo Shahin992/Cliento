@@ -8,7 +8,7 @@ type OptionalTextRule = {
   maxLength: number;
 };
 
-export type AddCustomerFormValues = {
+export type AddContactFormValues = {
   firstName: string;
   lastName: string;
   companyName: string;
@@ -35,7 +35,7 @@ type ValidationError = {
   message: string;
 };
 
-export type AddCustomerValidationResult = ValidationSuccess | ValidationError;
+export type AddContactValidationResult = ValidationSuccess | ValidationError;
 
 const validateOptionalText = ({
   label,
@@ -87,9 +87,9 @@ const dedupeExact = (values: string[]) => {
   return deduped;
 };
 
-export const validateAddCustomerPayload = (
-  form: AddCustomerFormValues,
-): AddCustomerValidationResult => {
+export const validateAddContactPayload = (
+  form: AddContactFormValues,
+): AddContactValidationResult => {
   const firstName = form.firstName.trim();
   if (!firstName) {
     return { success: false, message: 'First name is required.' };

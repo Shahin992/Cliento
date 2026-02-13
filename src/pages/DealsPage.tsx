@@ -670,7 +670,7 @@ const DealsPage = () => {
                 pipelineId: payload.pipelineId,
                 stageId: payload.stageId,
                 avatar: initials || 'DL',
-                customer: 'New Customer',
+                customer: 'New Contact',
                 email: 'new@client.com',
                 phone: '000-000-0000',
                 address: '',

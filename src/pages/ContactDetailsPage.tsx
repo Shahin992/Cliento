@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
+import { useMemo, useState, type MouseEvent } from 'react';
 import {
   Avatar,
   Box,
@@ -25,11 +25,13 @@ import {
 } from '@mui/icons-material';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
-import AddCustomerModal from '../components/contacts/modals/AddCustomerModal';
+import AddContactModal from '../components/contacts/modals/AddContactModal';
 import ConfirmationAlertModal from '../common/ConfirmationAlertModal';
 import { useToast } from '../common/ToastProvider';
 import { deals } from '../data/deals';
-import { deleteContact, getContactById, type ContactDetails } from '../services/contacts';
+import { type ContactDetails } from '../services/contacts';
+import { useContactByIdQuery } from '../hooks/contacts/useContactsQueries';
+import { useDeleteContactMutation } from '../hooks/contacts/useContactsMutations';
 
 const borderColor = '#e6eaf1';
 const mutedText = '#7e8796';
@@ -88,47 +90,18 @@ const ContactDetailsPage = () => {
   const navigate = useNavigate();
   const { contactId } = useParams();
   const [activeTab, setActiveTab] = useState('Deals');
-  const [contact, setContact] = useState<ContactDetails | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [reloadKey, setReloadKey] = useState(0);
   const [actionsMenuAnchorEl, setActionsMenuAnchorEl] = useState<HTMLElement | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
-  const [isDeletingContact, setIsDeletingContact] = useState(false);
-  const requestIdRef = useRef(0);
   const isActionsMenuOpen = Boolean(actionsMenuAnchorEl);
   const { showToast } = useToast();
-
-  useEffect(() => {
-    const loadContact = async () => {
-      if (!contactId) {
-        setContact(null);
-        setErrorMessage('Missing contact id.');
-        setIsLoading(false);
-        return;
-      }
-
-      const requestId = ++requestIdRef.current;
-      setIsLoading(true);
-      setErrorMessage(null);
-
-      const response = await getContactById(contactId);
-      if (requestId !== requestIdRef.current) return;
-
-      if (!response.success || !response.data) {
-        setContact(null);
-        setErrorMessage(response.message || 'Contact not found.');
-        setIsLoading(false);
-        return;
-      }
-
-      setContact(response.data);
-      setIsLoading(false);
-    };
-
-    void loadContact();
-  }, [contactId, reloadKey]);
+  const {
+    contact: queriedContact,
+    loading: isLoading,
+    errorMessage,
+  } = useContactByIdQuery(contactId);
+  const contact = queriedContact ?? null;
+  const { deleteContact, loading: isDeletingContact } = useDeleteContactMutation();
 
   const handleOpenActionsMenu = (event: MouseEvent<HTMLElement>) => {
     setActionsMenuAnchorEl(event.currentTarget);
@@ -154,19 +127,11 @@ const ContactDetailsPage = () => {
       return;
     }
 
-    setIsDeletingContact(true);
     try {
-      const response = await deleteContact(contact._id);
-      if (!response.success) {
-        showToast({
-          message: response.message || 'Failed to delete contact.',
-          severity: 'error',
-        });
-        return;
-      }
+      await deleteContact(contact._id);
 
       showToast({
-        message: response.message || 'Contact deleted successfully.',
+        message: 'Contact deleted successfully.',
         severity: 'success',
       });
       setIsDeleteConfirmOpen(false);
@@ -176,8 +141,6 @@ const ContactDetailsPage = () => {
         message: error instanceof Error ? error.message : 'Failed to delete contact.',
         severity: 'error',
       });
-    } finally {
-      setIsDeletingContact(false);
     }
   };
 
@@ -201,13 +164,13 @@ const ContactDetailsPage = () => {
     const phoneKey = normalize(contact.phones?.[0]);
 
     return deals.filter((deal) => {
-      const dealCustomer = normalize(deal.customer);
+      const dealContact = normalize(deal.customer);
       const dealEmail = normalize(deal.email);
       const dealPhone = normalize(deal.phone);
       return (
         (emailKey && dealEmail === emailKey) ||
         (phoneKey && dealPhone === phoneKey) ||
-        (fullNameKey && dealCustomer === fullNameKey)
+        (fullNameKey && dealContact === fullNameKey)
       );
     });
   }, [contact]);
@@ -621,14 +584,13 @@ const ContactDetailsPage = () => {
       ) : null}
 
       {contact ? (
-        <AddCustomerModal
+        <AddContactModal
           open={isEditModalOpen}
           mode="edit"
           initialData={contact}
           onClose={() => setIsEditModalOpen(false)}
           onSave={() => {
             setIsEditModalOpen(false);
-            setReloadKey((prev) => prev + 1);
           }}
         />
       ) : null}

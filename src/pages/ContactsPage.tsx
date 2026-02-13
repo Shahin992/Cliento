@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CustomIconButton } from '../common/CustomIconButton';
 import {
   Avatar,
@@ -29,8 +29,10 @@ import BasicInput from '../common/BasicInput';
 import { CustomButton } from '../common/CustomButton';
 import ConfirmationAlertModal from '../common/ConfirmationAlertModal';
 import { useToast } from '../common/ToastProvider';
-import AddCustomerModal from '../components/contacts/modals/AddCustomerModal';
-import { deleteContact, getContacts, type ContactListItem } from '../services/contacts';
+import AddContactModal from '../components/contacts/modals/AddContactModal';
+import { type ContactListItem } from '../services/contacts';
+import { useContactsQuery } from '../hooks/contacts/useContactsQueries';
+import { useDeleteContactMutation } from '../hooks/contacts/useContactsMutations';
 
 const borderColor = '#e7edf6';
 const mutedText = '#8b95a7';
@@ -89,31 +91,29 @@ const ContactsPage = () => {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
-  const [contacts, setContacts] = useState<ContactListItem[]>([]);
-  const [totalCustomers, setTotalCustomers] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
-  const [serverLimit, setServerLimit] = useState(DEFAULT_PAGE_SIZE);
-  const [isLoadingContacts, setIsLoadingContacts] = useState(false);
-  const [contactsError, setContactsError] = useState<string | null>(null);
-  const [reloadKey, setReloadKey] = useState(0);
-  const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
+  const [isAddContactOpen, setIsAddContactOpen] = useState(false);
   const [selectedContactForEdit, setSelectedContactForEdit] = useState<ContactListItem | null>(null);
   const [selectedContactForDelete, setSelectedContactForDelete] = useState<ContactListItem | null>(null);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
-  const [isDeletingContact, setIsDeletingContact] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const isMobileViewport = useMediaQuery('(max-width:599.95px)');
-  const requestIdRef = useRef(0);
   const { showToast } = useToast();
+  const { deleteContact, loading: isDeletingContact } = useDeleteContactMutation();
+  const {
+    contacts,
+    pagination,
+    loading: isLoadingContacts,
+    errorMessage: contactsError,
+  } = useContactsQuery(page, limit, debouncedSearchQuery || undefined);
 
   const openAddContactModal = () => {
     setSelectedContactForEdit(null);
-    setIsAddCustomerOpen(true);
+    setIsAddContactOpen(true);
   };
 
   const openEditContactModal = (contact: ContactListItem) => {
     setSelectedContactForEdit(contact);
-    setIsAddCustomerOpen(true);
+    setIsAddContactOpen(true);
   };
 
   const openDeleteContactModal = (contact: ContactListItem) => {
@@ -129,31 +129,20 @@ const ContactsPage = () => {
       return;
     }
 
-    setIsDeletingContact(true);
     try {
-      const response = await deleteContact(contactId);
-      if (!response.success) {
-        showToast({
-          message: response.message || 'Failed to delete contact.',
-          severity: 'error',
-        });
-        return;
-      }
+      await deleteContact(contactId);
 
       showToast({
-        message: response.message || 'Contact deleted successfully.',
+        message: 'Contact deleted successfully.',
         severity: 'success',
       });
       setIsDeleteConfirmOpen(false);
       setSelectedContactForDelete(null);
-      setReloadKey((prev) => prev + 1);
     } catch (error) {
       showToast({
         message: error instanceof Error ? error.message : 'Failed to delete contact.',
         severity: 'error',
       });
-    } finally {
-      setIsDeletingContact(false);
     }
   };
 
@@ -176,73 +165,18 @@ const ContactsPage = () => {
   }, [searchQuery]);
 
   useEffect(() => {
-    const loadContacts = async () => {
-      const requestId = ++requestIdRef.current;
-      setIsLoadingContacts(true);
-      setContactsError(null);
+    const serverPage = Math.max(1, Number(pagination?.page) || page);
+    if (serverPage !== page) {
+      setPage(serverPage);
+    }
+  }, [pagination?.page, page]);
 
-      const response = await getContacts({
-        page,
-        limit,
-        search: debouncedSearchQuery || undefined,
-      });
-
-      if (requestId !== requestIdRef.current) {
-        return;
-      }
-
-      if (!response.success || !response.data) {
-        setContactsError(response.message || 'Failed to fetch contacts.');
-        setIsLoadingContacts(false);
-        return;
-      }
-
-      const pagination = response.data.pagination ?? {
-        page,
-        limit,
-        total: response.data.contacts?.length ?? 0,
-        totalPages: 1,
-        hasNextPage: false,
-        hasPrevPage: false,
-      };
-      const serverPage = Math.max(1, Number(pagination.page) || page);
-      const parsedTotal = Number(pagination.total);
-      const parsedTotalPages = Number(pagination.totalPages);
-      const normalizedTotalPages = Math.max(1, parsedTotalPages || 1);
-      const normalizedLimit = Math.max(1, Number(pagination.limit) || limit);
-
-      setContacts(response.data.contacts ?? []);
-      setTotalCustomers((prev) => {
-        if (Number.isFinite(parsedTotal) && parsedTotal >= 0) {
-          if (serverPage > 1 && parsedTotal === 0 && prev > 0) {
-            return prev;
-          }
-          return parsedTotal;
-        }
-        return serverPage > 1 ? prev : 0;
-      });
-      setTotalPages((prev) => {
-        if (Number.isFinite(parsedTotalPages) && parsedTotalPages >= 1) {
-          if (serverPage > 1 && parsedTotalPages === 1 && prev > 1) {
-            return prev;
-          }
-          return parsedTotalPages;
-        }
-        return serverPage > 1 ? prev : normalizedTotalPages;
-      });
-      setServerLimit(normalizedLimit);
-      if (serverPage !== page) {
-        setPage(serverPage);
-      }
-      setIsLoadingContacts(false);
-    };
-
-    void loadContacts();
-  }, [page, debouncedSearchQuery, limit, reloadKey]);
-
-  const pageStart = totalCustomers === 0 ? 0 : (page - 1) * serverLimit + 1;
+  const totalContacts = Math.max(0, Number(pagination?.total) || 0);
+  const totalPages = Math.max(1, Number(pagination?.totalPages) || 1);
+  const serverLimit = Math.max(1, Number(pagination?.limit) || limit);
+  const pageStart = totalContacts === 0 ? 0 : (page - 1) * serverLimit + 1;
   const pageEnd =
-    totalCustomers === 0 ? 0 : Math.min((page - 1) * serverLimit + contacts.length, totalCustomers);
+    totalContacts === 0 ? 0 : Math.min((page - 1) * serverLimit + contacts.length, totalContacts);
 
   return (
     <Box
@@ -420,7 +354,7 @@ const ContactsPage = () => {
         >
           {!isLoadingContacts ? (
             <Typography sx={{ fontWeight: 600, color: '#111827' }}>
-              Total: {totalCustomers} contacts
+              Total: {totalContacts} contacts
             </Typography>
           ) : null}
         </Stack>
@@ -788,9 +722,9 @@ const ContactsPage = () => {
           >
             {!isLoadingContacts ? (
               <Typography sx={{ color: mutedText, fontSize: 13 }}>
-                {totalCustomers === 0
+                {totalContacts === 0
                   ? '0 results'
-                  : `${pageStart}-${pageEnd} of ${totalCustomers}`}
+                  : `${pageStart}-${pageEnd} of ${totalContacts}`}
               </Typography>
             ) : null}
             {!isLoadingContacts ? (
@@ -819,21 +753,20 @@ const ContactsPage = () => {
         </Box>
       </Box>
 
-     {isAddCustomerOpen && ( 
-      <AddCustomerModal
-        open={isAddCustomerOpen}
+     {isAddContactOpen && ( 
+      <AddContactModal
+        open={isAddContactOpen}
         mode={selectedContactForEdit ? 'edit' : 'add'}
         initialData={selectedContactForEdit}
         onClose={() => {
-          setIsAddCustomerOpen(false);
+          setIsAddContactOpen(false);
           setSelectedContactForEdit(null);
         }}
         onSave={() => {
-          setIsAddCustomerOpen(false);
+          setIsAddContactOpen(false);
           if (!selectedContactForEdit) {
             setPage(1);
           }
-          setReloadKey((prev) => prev + 1);
           setSelectedContactForEdit(null);
         }}
       />)}

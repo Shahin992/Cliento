@@ -20,8 +20,8 @@ import {
   mutedText,
   primary,
 } from './dealModalStyles';
-import SelectCustomerModal from './SelectCustomerModal';
-import AddCustomerModal from '../../contacts/modals/AddCustomerModal';
+import SelectContactModal from './SelectContactModal';
+import AddContactModal from '../../contacts/modals/AddContactModal';
 
 interface AddDealModalProps {
   open: boolean;
@@ -50,9 +50,9 @@ const AddDealModal = ({
   pipelines = [],
   initialDeal = null,
 }: AddDealModalProps) => {
-  const [isSelectCustomerOpen, setIsSelectCustomerOpen] = useState(false);
-  const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
-  const [selectedCustomerId, setSelectedCustomerId] = useState('');
+  const [isSelectContactOpen, setIsSelectContactOpen] = useState(false);
+  const [isAddContactOpen, setIsAddContactOpen] = useState(false);
+  const [selectedContactId, setSelectedContactId] = useState('');
   const [roomImages, setRoomImages] = useState<File[]>([]);
   const [roomImagePreviews, setRoomImagePreviews] = useState<string[]>([]);
 
@@ -75,9 +75,9 @@ const AddDealModal = ({
     instructions: initialDeal?.instructions ?? '',
   });
 
-  const selectedCustomer = useMemo(
-    () => contacts.find((item) => item.id === selectedCustomerId),
-    [selectedCustomerId],
+  const selectedContact = useMemo(
+    () => contacts.find((item) => item.id === selectedContactId),
+    [selectedContactId],
   );
 
   const selectedPipeline = useMemo(
@@ -199,7 +199,7 @@ const AddDealModal = ({
                 border: `1px solid ${borderColor}`,
               }}
             >
-              {selectedCustomer ? (
+              {selectedContact ? (
                 <Stack direction="row" spacing={1.25} alignItems="center">
                   <Avatar
                     sx={{
@@ -211,14 +211,14 @@ const AddDealModal = ({
                       fontSize: 13,
                     }}
                   >
-                    {selectedCustomer.avatar ?? 'C'}
+                    {selectedContact.avatar ?? 'C'}
                   </Avatar>
                   <Box>
                     <Typography variant="caption" sx={{ color: mutedText }}>
-                      Customer
+                      Contact
                     </Typography>
                     <Typography sx={{ fontWeight: 700, color: '#0f172a' }}>
-                      {selectedCustomer.name}
+                      {selectedContact.name}
                     </Typography>
                   </Box>
                 </Stack>
@@ -236,9 +236,9 @@ const AddDealModal = ({
                   width: { xs: '100%', sm: 'auto' },
                   ml: { sm: 'auto' },
                 }}
-                onClick={() => setIsSelectCustomerOpen(true)}
+                onClick={() => setIsSelectContactOpen(true)}
               >
-                {selectedCustomer ? 'Change Customer' : 'Select Customer'}
+                {selectedContact ? 'Change Contact' : 'Select Contact'}
               </CustomButton>
             </Box>
 
@@ -569,22 +569,22 @@ const AddDealModal = ({
         </Box>
       </Modal>
 
-      <SelectCustomerModal
-        open={isSelectCustomerOpen}
-        onClose={() => setIsSelectCustomerOpen(false)}
-        onSelect={(customerId) => {
-          setSelectedCustomerId(customerId);
-          setIsSelectCustomerOpen(false);
+      <SelectContactModal
+        open={isSelectContactOpen}
+        onClose={() => setIsSelectContactOpen(false)}
+        onSelect={(contactId) => {
+          setSelectedContactId(contactId);
+          setIsSelectContactOpen(false);
         }}
         onAddNew={() => {
-          setIsSelectCustomerOpen(false);
-          setIsAddCustomerOpen(true);
+          setIsSelectContactOpen(false);
+          setIsAddContactOpen(true);
         }}
       />
-      <AddCustomerModal
-        open={isAddCustomerOpen}
-        onClose={() => setIsAddCustomerOpen(false)}
-        onSave={() => setIsAddCustomerOpen(false)}
+      <AddContactModal
+        open={isAddContactOpen}
+        onClose={() => setIsAddContactOpen(false)}
+        onSave={() => setIsAddContactOpen(false)}
       />
     </>
   );

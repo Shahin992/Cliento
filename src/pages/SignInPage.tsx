@@ -5,11 +5,11 @@ import { Visibility, VisibilityOff } from '@mui/icons-material';
 
 import BasicInput from '../common/BasicInput';
 import { CustomButton } from '../common/CustomButton';
-import { signIn } from '../services/auth';
 import type { SignInPayload } from '../types/auth';
 import { useAppDispatch } from '../app/hooks';
 import { setAuth } from '../features/auth/authSlice';
 import { useToast } from '../common/ToastProvider';
+import { useSignInMutation } from '../hooks/auth/useAuthMutations';
 
 const accent = '#346fef';
 
@@ -19,8 +19,8 @@ const SignInPage = () => {
   const dispatch = useAppDispatch();
   const [form, setForm] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
+  const { signIn, loading: signInLoading, errorMessage: signInErrorMessage } = useSignInMutation();
 
   const handleChange =
     (field: keyof typeof form) => (event: ChangeEvent<HTMLInputElement>) => {
@@ -56,30 +56,26 @@ const SignInPage = () => {
       return;
     }
 
-    setSubmitting(true);
-    const response = await signIn(payload);
+    try {
+      const user = await signIn(payload);
+      if (!user) {
+        showToast({
+          message: 'Sign in failed. Missing user data.',
+          severity: 'error',
+        });
+        return;
+      }
 
-    if (!response.success) {
+      dispatch(setAuth({ user }));
+      navigate('/dashboard');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : signInErrorMessage || 'Sign in failed. Please try again.';
+
       showToast({
-        message: response.details || response.message || 'Sign in failed. Please try again.',
+        message,
         severity: 'error',
       });
-      setSubmitting(false);
-      return;
     }
-
-    if (!response.data) {
-      showToast({
-        message: 'Sign in failed. Missing user data.',
-        severity: 'error',
-      });
-      setSubmitting(false);
-      return;
-    }
-
-    dispatch(setAuth({ user: response.data }));
-    navigate('/dashboard');
-    setSubmitting(false);
   };
 
   return (
@@ -197,9 +193,9 @@ const SignInPage = () => {
               customColor={accent}
               fullWidth
               type="submit"
-              disabled={submitting}
+              disabled={signInLoading}
             >
-              {submitting ? 'Signing in...' : 'Sign in'}
+              {signInLoading ? 'Signing in...' : 'Sign in'}
             </CustomButton>
           </Stack>
         </Box>

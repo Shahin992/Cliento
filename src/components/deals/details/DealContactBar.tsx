@@ -3,13 +3,13 @@ import { Avatar, Box, Stack, Typography } from '@mui/material';
 const labelSx = { fontSize: 11, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em' };
 const valueSx = { fontSize: 13, fontWeight: 600, color: '#1f2937' };
 
-interface DealCustomerBarProps {
+interface DealContactBarProps {
   customer: string;
   email: string;
   phone: string;
 }
 
-const DealCustomerBar = ({ customer, email, phone }: DealCustomerBarProps) => (
+const DealContactBar = ({ customer, email, phone }: DealContactBarProps) => (
   <Box
     sx={{
       px: { xs: 1.5, sm: 2.5 },
@@ -43,7 +43,7 @@ const DealCustomerBar = ({ customer, email, phone }: DealCustomerBarProps) => (
         }}
       >
         <Box>
-          <Typography sx={labelSx}>Customer</Typography>
+          <Typography sx={labelSx}>Contact</Typography>
           <Typography sx={valueSx}>{customer}</Typography>
         </Box>
         <Box>
@@ -59,4 +59,4 @@ const DealCustomerBar = ({ customer, email, phone }: DealCustomerBarProps) => (
   </Box>
 );
 
-export default DealCustomerBar;
+export default DealContactBar;

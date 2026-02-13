@@ -5,9 +5,9 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import BasicInput from '../common/BasicInput';
 import { CustomButton } from '../common/CustomButton';
-import { signUp } from '../services/auth';
 import type { SignUpPayload } from '../types/auth';
 import { useToast } from '../common/ToastProvider';
+import { useSignUpMutation } from '../hooks/auth/useAuthMutations';
 
 const accent = '#346fef';
 
@@ -21,13 +21,13 @@ const SignUpPage = () => {
     phoneNumber: '',
   });
   const [termsAccepted, setTermsAccepted] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{
     fullName?: string;
     email?: string;
     companyName?: string;
     phoneNumber?: string;
   }>({});
+  const { signUp, loading: signUpLoading, errorMessage: signUpErrorMessage } = useSignUpMutation();
   
   const handleChange =
     (field: keyof typeof form) => (event: ChangeEvent<HTMLInputElement>) => {
@@ -114,19 +114,17 @@ const SignUpPage = () => {
       return;
     }
 
-    setSubmitting(true);
-    const response = await signUp(payload);
-    setSubmitting(false);
+    try {
+      await signUp(payload);
+      navigate('/welcome');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : signUpErrorMessage || 'Signup failed. Please try again.';
 
-    if (!response.success) {
       showToast({
-        message: response.details || response.message || 'Signup failed. Please try again.',
+        message,
         severity: 'error',
       });
-      return;
     }
-
-    navigate('/welcome');
   };
 
   return (
@@ -300,9 +298,9 @@ const SignUpPage = () => {
             customColor={accent}
             fullWidth
             type="submit"
-            disabled={submitting}
+            disabled={signUpLoading}
           >
-            {submitting ? 'Creating account...' : 'Create account'}
+            {signUpLoading ? 'Creating account...' : 'Create account'}
           </CustomButton>
           </Stack>
         </Box>

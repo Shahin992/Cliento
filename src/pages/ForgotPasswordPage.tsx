@@ -4,7 +4,11 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import BasicInput from '../common/BasicInput';
 import { CustomButton } from '../common/CustomButton';
-import { forgotPassword, resetPassword, verifyOtp } from '../services/auth';
+import {
+  useForgotPasswordMutation,
+  useResetPasswordMutation,
+  useVerifyOtpMutation,
+} from '../hooks/auth/useAuthMutations';
 import { useToast } from '../common/ToastProvider';
 import type { ForgotPasswordPayload, ResetPasswordPayload, VerifyOtpPayload } from '../types/auth';
 import { AccessTime, Visibility, VisibilityOff } from '@mui/icons-material';
@@ -26,13 +30,16 @@ const ForgotPasswordPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
-  const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<{
     email?: string;
     otp?: string;
     password?: string;
     confirmPassword?: string;
   }>({});
+  const { forgotPassword, loading: forgotLoading } = useForgotPasswordMutation();
+  const { verifyOtp, loading: verifyLoading } = useVerifyOtpMutation();
+  const { resetPassword, loading: resetLoading } = useResetPasswordMutation();
+  const submitting = forgotLoading || verifyLoading || resetLoading;
 
   useEffect(() => {
     if (step !== 'otp' || otpVerified) {
@@ -57,20 +64,17 @@ const ForgotPasswordPage = () => {
       setErrors({ email: 'Email is required.' });
       return;
     }
-    setSubmitting(true);
     const payload: ForgotPasswordPayload = { email: email.trim() };
-    const response = await forgotPassword(payload);
-    setSubmitting(false);
-    if (!response.success) {
+    try {
+      await forgotPassword(payload);
+    } catch (error) {
       showToast({
-        message: response.details || response.message || 'Failed to send OTP. Please try again.',
+        message: error instanceof Error ? error.message : 'Failed to send OTP. Please try again.',
         severity: 'error',
       });
       return;
     }
-    if (response.message) {
-      showToast({ message: response.message, severity: 'success' });
-    }
+    showToast({ message: 'OTP sent successfully.', severity: 'success' });
     setStep('otp');
     setTimeLeft(5 * 60);
   };
@@ -80,20 +84,17 @@ const ForgotPasswordPage = () => {
       setErrors({ email: 'Email is required.' });
       return;
     }
-    setSubmitting(true);
     const payload: ForgotPasswordPayload = { email: email.trim() };
-    const response = await forgotPassword(payload);
-    setSubmitting(false);
-    if (!response.success) {
+    try {
+      await forgotPassword(payload);
+    } catch (error) {
       showToast({
-        message: response.details || response.message || 'Failed to resend OTP. Please try again.',
+        message: error instanceof Error ? error.message : 'Failed to resend OTP. Please try again.',
         severity: 'error',
       });
       return;
     }
-    if (response.message) {
-      showToast({ message: response.message, severity: 'success' });
-    }
+    showToast({ message: 'OTP resent successfully.', severity: 'success' });
     setTimeLeft(5 * 60);
   };
 
@@ -108,17 +109,14 @@ const ForgotPasswordPage = () => {
       setErrors({ otp: 'OTP expired. Please request a new one.' });
       return;
     }
-    setSubmitting(true);
     const payload: VerifyOtpPayload = { email: email.trim(), otp: otpValue.trim() };
-    const response = await verifyOtp(payload);
-    setSubmitting(false);
-    if (!response.success) {
-      setErrors({ otp: response.details || response.message || 'Invalid OTP. Please try again.' });
+    try {
+      await verifyOtp(payload);
+    } catch (error) {
+      setErrors({ otp: error instanceof Error ? error.message : 'Invalid OTP. Please try again.' });
       return;
     }
-    if (response.message) {
-      showToast({ message: response.message, severity: 'success' });
-    }
+    showToast({ message: 'OTP verified successfully.', severity: 'success' });
     setOtpVerified(true);
     setStep('reset');
   };
@@ -142,24 +140,21 @@ const ForgotPasswordPage = () => {
       setErrors({ confirmPassword: 'Passwords do not match.' });
       return;
     }
-    setSubmitting(true);
     const payload: ResetPasswordPayload = {
       email: email.trim(),
       otp: otpValue.trim(),
       newPassword: password,
     };
-    const response = await resetPassword(payload);
-    setSubmitting(false);
-    if (!response.success) {
+    try {
+      await resetPassword(payload);
+    } catch (error) {
       showToast({
-        message: response.details || response.message || 'Failed to reset password.',
+        message: error instanceof Error ? error.message : 'Failed to reset password.',
         severity: 'error',
       });
       return;
     }
-    if (response.message) {
-      showToast({ message: response.message, severity: 'success' });
-    }
+    showToast({ message: 'Password updated successfully.', severity: 'success' });
     navigate('/signin');
   };
 
