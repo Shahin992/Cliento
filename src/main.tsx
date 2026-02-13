@@ -9,7 +9,7 @@ import { store } from './app/store';
 import { clearAuth, setAuth, setAuthInitialized } from './features/auth/authSlice';
 import theme from './theme';
 import { ToastProvider } from './common/ToastProvider';
-import { removeCookie } from './utils/auth';
+import { getCookie, removeCookie } from './utils/auth';
 import { getMeProfile } from './services/auth';
 import './index.css';
 
@@ -20,6 +20,12 @@ if ('serviceWorker' in navigator) {
 }
 
 void (async () => {
+  const token = getCookie('cliento_token');
+  if (!token) {
+    store.dispatch(setAuthInitialized(true));
+    return;
+  }
+
   const response = await getMeProfile();
   if (response.success && response.data) {
     store.dispatch(setAuth({ user: response.data }));
