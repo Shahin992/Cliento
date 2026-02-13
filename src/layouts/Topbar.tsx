@@ -92,10 +92,10 @@ const Topbar = ({
     try {
       await logout();
     } finally {
+      navigate('/signin');
       removeCookie('cliento_token');
       dispatch(clearAuth());
       handleClose();
-      navigate('/signin');
     }
   };
 
