@@ -2,7 +2,7 @@ import { Avatar, Box } from '@mui/material';
 import { CustomIconButton as IconButton } from '../../../common/CustomIconButton';
 import { EditOutlined } from '@mui/icons-material';
 
-import type { ContactDetails } from '../../../services/contacts';
+import type { ContactDetails } from '../../../hooks/contacts/contactTypes';
 import { primary, sectionCardSx } from './contactStyles';
 
 interface ContactHeroBannerProps {

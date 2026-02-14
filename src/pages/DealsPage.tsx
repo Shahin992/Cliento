@@ -1,198 +1,224 @@
-import { CustomIconButton  } from '../common/CustomIconButton';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
-  Avatar,
   Box,
+  MenuItem,
+  Pagination,
+  Popover,
+  Select,
+  Skeleton,
   Stack,
   Typography,
+  useMediaQuery,
 } from '@mui/material';
 import {
   CancelOutlined,
   CheckCircleOutlined,
+  DeleteOutline,
   EditOutlined,
+  FilterListOutlined,
 } from '@mui/icons-material';
 import { Link } from 'react-router-dom';
+import type { SelectChangeEvent } from '@mui/material';
 
 import PageHeader from '../components/PageHeader';
 import { CustomButton } from '../common/CustomButton';
 import BasicInput from '../common/BasicInput';
 import BasicSelect from '../common/BasicSelect';
-import CustomModal from '../common/CustomModal';
 import CustomTooltip from '../common/CustomTooltip';
+import { CustomIconButton } from '../common/CustomIconButton';
 import AddDealModal from '../components/deals/modals/AddDealModal';
-import { deals as seedDeals } from '../data/deals';
-import { pipelines as seedPipelines } from '../data/pipelines';
+import DeleteDealModal from '../components/deals/modals/DeleteDealModal';
+import MarkLostDealModal from '../components/deals/modals/MarkLostDealModal';
+import PipelineModal from '../components/deals/modals/PipelineModal';
+import { useDealsQuery } from '../hooks/deals/useDealsQueries';
+import { usePipelinesOptionsQuery } from '../hooks/pipelines/usePipelinesQueries';
+import { useAppDispatch, useAppSelector } from '../app/hooks';
+import { addPipelineOption, setPipelineOptions } from '../features/pipelines/pipelinesSlice';
 
-const borderColor = '#e7edf6';
-const mutedText = '#8b95a7';
-const primary = '#6d28ff';
-const bgSoft = '#f8fbff';
+const borderColor = '#dbe4f0';
+const mutedText = '#6b7a90';
+const primary = '#1d4ed8';
+const bgSoft = '#eef4ff';
+const pageBg = 'linear-gradient(180deg, #f6f9ff 0%, #ffffff 48%, #f8fbff 100%)';
+const DEFAULT_PAGE_SIZE = 10;
+const PAGE_LIMIT_OPTIONS = [10, 25, 50, 100];
 
-const statusStyles: Record<string, { color: string; background: string }> = {
-  'In Progress': { color: primary, background: '#efe9ff' },
-  Won: { color: '#16a34a', background: '#dcfce7' },
-  Lost: { color: '#ef4444', background: '#fee2e2' },
+const formatCloseDate = (value: string | null) => {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+};
+
+const formatContactName = (contact?: {
+  firstName?: string;
+  lastName?: string;
+  companyName?: string;
+}) => {
+  if (!contact) return '-';
+  const fullName = `${contact.firstName ?? ''} ${contact.lastName ?? ''}`.trim();
+  if (fullName) return fullName;
+  return contact.companyName?.trim() || '-';
+};
+
+const getStatusTone = (status: string) => {
+  const normalized = status.toLowerCase();
+  if (normalized === 'won') {
+    return { color: '#166534', bg: '#e9fce9', border: '#bbf7d0' };
+  }
+  if (normalized === 'lost') {
+    return { color: '#991b1b', bg: '#fef2f2', border: '#fecaca' };
+  }
+  return { color: '#1e3a8a', bg: '#e8f0ff', border: '#bfdbfe' };
 };
 
 const DealsPage = () => {
-  const [sortBy, setSortBy] = useState('date-created');
-  const [dealList, setDealList] = useState(seedDeals);
+  const dispatch = useAppDispatch();
+  const useFilterPopover = useMediaQuery('(max-width:1039.95px)');
+  const reduxPipelines = useAppSelector((state) => state.pipelines.options);
   const [isAddDealOpen, setIsAddDealOpen] = useState(false);
-  const [editingDeal, setEditingDeal] = useState<null | (typeof seedDeals)[number]>(
-    null,
-  );
-  const [lostDeal, setLostDeal] = useState<null | (typeof seedDeals)[number]>(null);
-  const [lostReason, setLostReason] = useState('');
-  const [celebrationDealId, setCelebrationDealId] = useState<number | null>(null);
-  const [pipelines, setPipelines] = useState(seedPipelines);
-  const [selectedPipelineId, setSelectedPipelineId] = useState('all');
   const [isAddPipelineOpen, setIsAddPipelineOpen] = useState(false);
-  const [pipelineName, setPipelineName] = useState('');
-  const [stageDrafts, setStageDrafts] = useState([
-    { id: 'stage-1', name: 'Lead', color: '#2563eb' },
-    { id: 'stage-2', name: 'Qualified', color: '#0f766e' },
-    { id: 'stage-3', name: 'Proposal', color: '#7c3aed' },
-  ]);
+  const [pipelineModalMode, setPipelineModalMode] = useState<'create' | 'edit'>('create');
+  const [selectedPipelineId, setSelectedPipelineId] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [filterAnchorEl, setFilterAnchorEl] = useState<HTMLElement | null>(null);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
+  const [firstPageTotal, setFirstPageTotal] = useState(0);
+  const [statusOverrides, setStatusOverrides] = useState<
+    Record<string, { status: string; lostReason?: string | null }>
+  >({});
+  const [deletedDealIds, setDeletedDealIds] = useState<Record<string, true>>({});
+  const [lostDealId, setLostDealId] = useState<string | null>(null);
+  const [lostReason, setLostReason] = useState('');
+  const [dealToDeleteId, setDealToDeleteId] = useState<string | null>(null);
+  const [celebrationDealId, setCelebrationDealId] = useState<string | null>(null);
 
-  const pipelineOptions = useMemo(
-    () => [
-      { label: 'All pipelines', value: 'all' },
-      ...pipelines.map((pipeline) => ({
-        label: pipeline.name,
-        value: pipeline.id,
-      })),
-    ],
-    [pipelines],
+  const { pipelines: apiPipelines, loading: loadingPipelineOptions } = usePipelinesOptionsQuery(true);
+  const { deals, pagination, loading, hasError, errorMessage, refetch } = useDealsQuery(
+    page,
+    limit,
+    debouncedSearchQuery || undefined,
+    selectedPipelineId || undefined,
+    selectedStatus || undefined,
   );
-  const sortOptions = [
-    { label: 'Sort by: Date Created', value: 'date-created' },
-    { label: 'Sort by: Appointment Date', value: 'appointment' },
-    { label: 'Sort by: Price', value: 'price' },
-  ];
 
-  const pipelineMap = useMemo(
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [selectedPipelineId]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [selectedStatus]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [limit]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery.trim());
+    }, 300);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [searchQuery]);
+
+  useEffect(() => {
+    if (!useFilterPopover) {
+      setFilterAnchorEl(null);
+    }
+  }, [useFilterPopover]);
+
+  useEffect(() => {
+    if ((pagination?.page ?? 0) === 1 && typeof pagination?.total === 'number') {
+      setFirstPageTotal(Math.max(0, pagination.total));
+    }
+  }, [pagination?.page, pagination?.total]);
+
+  useEffect(() => {
+    const serverPage = Math.max(1, Number(pagination?.page) || page);
+    if (serverPage !== page) {
+      setPage(serverPage);
+    }
+  }, [pagination?.page, page]);
+
+  useEffect(() => {
+    if (!apiPipelines.length) return;
+    dispatch(setPipelineOptions(apiPipelines));
+  }, [apiPipelines, dispatch]);
+
+  const totalDeals =
+    (pagination?.page ?? 1) === 1
+      ? Math.max(0, Number(pagination?.total) || 0)
+      : firstPageTotal;
+
+  const visibleDeals = useMemo(
+    () => deals.filter((deal) => !deletedDealIds[deal._id]),
+    [deals, deletedDealIds],
+  );
+
+  const visibleTotalDeals = Math.max(0, totalDeals - Object.keys(deletedDealIds).length);
+  const totalPages = Math.max(1, Number(pagination?.totalPages) || 1);
+  const serverLimit = Math.max(1, Number(pagination?.limit) || limit);
+  const pageStart = visibleTotalDeals === 0 ? 0 : (page - 1) * serverLimit + 1;
+  const pageEnd =
+    visibleTotalDeals === 0
+      ? 0
+      : Math.min((page - 1) * serverLimit + visibleDeals.length, visibleTotalDeals);
+
+  const pipelineFilterOptions = useMemo(
     () =>
-      new Map(
-        pipelines.map((pipeline) => [
-          pipeline.id,
-          {
-            name: pipeline.name,
-            stages: new Map(pipeline.stages.map((stage) => [stage.id, stage])),
-          },
-        ]),
-      ),
-    [pipelines],
+      reduxPipelines.map((pipeline) => ({
+        label: pipeline.name,
+        value: pipeline._id,
+      })),
+    [reduxPipelines],
   );
 
-  const filteredDeals = useMemo(() => {
-    if (selectedPipelineId === 'all') return dealList;
-    return dealList.filter((deal) => deal.pipelineId === selectedPipelineId);
-  }, [selectedPipelineId, dealList]);
+  const statusFilterOptions = useMemo(
+    () => [
+      { label: 'Open', value: 'open' },
+      { label: 'Won', value: 'won' },
+      { label: 'Lost', value: 'lost' },
+    ],
+    [],
+  );
 
-  const totalDeals = dealList.length;
-
-  const stagePalette = [
-    '#2563eb',
-    '#0f766e',
-    '#7c3aed',
-    '#b45309',
-    '#15803d',
-    '#ef4444',
-  ];
-
-  const getStageBackground = (hex: string) => {
-    const clean = hex.replace('#', '');
-    const bigint = parseInt(clean, 16);
-    if (Number.isNaN(bigint)) return '#f1f5f9';
-    const r = (bigint >> 16) & 255;
-    const g = (bigint >> 8) & 255;
-    const b = bigint & 255;
-    const mix = (channel: number) => Math.round(channel + (255 - channel) * 0.82);
-    return `rgb(${mix(r)}, ${mix(g)}, ${mix(b)})`;
-  };
-
-  const getStageIdForStatus = (pipelineId: string, status: 'Won' | 'Lost') => {
-    const pipeline = pipelines.find((item) => item.id === pipelineId);
-    if (!pipeline) return null;
-    const target = pipeline.stages.find((stage) =>
-      status === 'Won'
-        ? stage.id === 'won' || stage.name.toLowerCase().includes('won')
-        : stage.id === 'lost' || stage.name.toLowerCase().includes('lost'),
-    );
-    return target?.id ?? null;
-  };
-
-  const handleMarkWon = (dealId: number) => {
-    setDealList((prev) =>
-      prev.map((deal) => {
-        if (deal.id !== dealId) return deal;
-        const stageId = getStageIdForStatus(deal.pipelineId, 'Won');
-        return {
-          ...deal,
-          status: 'Won',
-          stageId: stageId ?? deal.stageId,
-          lostReason: undefined,
-        };
-      }),
-    );
+  const handleMarkWon = (dealId: string) => {
+    setStatusOverrides((prev) => ({
+      ...prev,
+      [dealId]: { status: 'won', lostReason: null },
+    }));
     setCelebrationDealId(dealId);
     window.setTimeout(() => setCelebrationDealId(null), 1800);
   };
 
   const handleConfirmLost = () => {
-    if (!lostDeal) return;
+    if (!lostDealId) return;
     const reason = lostReason.trim();
-    setDealList((prev) =>
-      prev.map((deal) => {
-        if (deal.id !== lostDeal.id) return deal;
-        const stageId = getStageIdForStatus(deal.pipelineId, 'Lost');
-        return {
-          ...deal,
-          status: 'Lost',
-          stageId: stageId ?? deal.stageId,
-          lostReason: reason || 'No reason provided',
-        };
-      }),
-    );
-    setLostDeal(null);
+    setStatusOverrides((prev) => ({
+      ...prev,
+      [lostDealId]: { status: 'lost', lostReason: reason || 'No reason provided' },
+    }));
+    setLostDealId(null);
     setLostReason('');
   };
 
-  const handleCreatePipeline = () => {
-    const trimmedName = pipelineName.trim();
-    const stages = stageDrafts
-      .map((stage) => ({
-        name: stage.name.trim(),
-        color: stage.color,
-      }))
-      .filter((stage) => stage.name);
-
-    if (!trimmedName || stages.length === 0) {
-      return;
-    }
-
-    const newPipelineId = `pipeline-${Date.now()}`;
-    const newPipeline = {
-      id: newPipelineId,
-      name: trimmedName,
-      stages: stages.map((stage, index) => ({
-        id: `${newPipelineId}-${stage.name.toLowerCase().replace(/\s+/g, '-')}`,
-        name: stage.name,
-        color: stage.color || stagePalette[index % stagePalette.length],
-        background: getStageBackground(stage.color || stagePalette[index % stagePalette.length]),
-      })),
-    };
-
-    setPipelines((prev) => [...prev, newPipeline]);
-    setPipelineName('');
-    setStageDrafts([
-      { id: 'stage-1', name: 'Lead', color: '#2563eb' },
-      { id: 'stage-2', name: 'Qualified', color: '#0f766e' },
-      { id: 'stage-3', name: 'Proposal', color: '#7c3aed' },
-    ]);
-    setIsAddPipelineOpen(false);
+  const handleConfirmDelete = () => {
+    if (!dealToDeleteId) return;
+    setDeletedDealIds((prev) => ({ ...prev, [dealToDeleteId]: true }));
+    setDealToDeleteId(null);
   };
 
+  const isFilterPopoverOpen = Boolean(filterAnchorEl);
 
   return (
     <Box
@@ -200,11 +226,14 @@ const DealsPage = () => {
         width: '100%',
         maxWidth: '100%',
         px: { xs: 1.5, sm: 2, md: 3 },
-        pb: 4,
-        minHeight: { xs: 'calc(100vh - 96px)', sm: 'calc(100vh - 110px)' },
+        pb: { xs: 12, sm: 0 },
+        height: { xs: 'auto', sm: 'calc(100vh - 112px)' },
+        minHeight: 0,
+        overflow: { xs: 'visible', sm: 'hidden' },
         display: 'flex',
         flexDirection: 'column',
         gap: 2,
+        background: pageBg,
       }}
     >
       <PageHeader
@@ -212,43 +241,90 @@ const DealsPage = () => {
         subtitle="Track active opportunities"
         action={
           <Stack
-            direction={{ xs: 'column', sm: 'row' }}
+            direction="row"
             spacing={1}
-            alignItems={{ xs: 'stretch', sm: 'center' }}
+            alignItems="center"
+            justifyContent="flex-end"
+            flexWrap="wrap"
             sx={{ width: { xs: '100%', sm: 'auto' } }}
           >
-            <Box sx={{ minWidth: { xs: '100%', sm: 210 } }}>
-              <BasicSelect
-                options={pipelineOptions}
-                mapping={{ label: 'label', value: 'value' }}
-                value={selectedPipelineId}
-                onChange={(event) => setSelectedPipelineId(event.target.value as string)}
-              />
-            </Box>
-            <Box sx={{ minWidth: { xs: '100%', sm: 170 } }}>
-              <BasicSelect
-                options={sortOptions}
-                mapping={{ label: 'label', value: 'value' }}
-                value={sortBy}
-                onChange={(event) => setSortBy(event.target.value as string)}
-              />
-            </Box>
+            {useFilterPopover ? (
+              <CustomIconButton
+                size="small"
+                onClick={(event) => setFilterAnchorEl(event.currentTarget)}
+                sx={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 999,
+                  border: `1px solid ${borderColor}`,
+                  backgroundColor: 'white',
+                  color: '#475569',
+                }}
+              >
+                <FilterListOutlined sx={{ fontSize: 20 }} />
+              </CustomIconButton>
+            ) : (
+              <>
+                <Box sx={{ minWidth: 240 }}>
+                  <BasicInput
+                    fullWidth
+                    placeholder="Search deals"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                  />
+                </Box>
+                <Box sx={{ minWidth: 190 }}>
+                  <BasicSelect
+                    options={pipelineFilterOptions}
+                    mapping={{ label: 'label', value: 'value' }}
+                    value={selectedPipelineId}
+                    defaultText="All pipelines"
+                    emptyable
+                    isLoading={loadingPipelineOptions}
+                    onChange={(event: SelectChangeEvent<unknown>) =>
+                      setSelectedPipelineId((event.target.value as string) || '')
+                    }
+                  />
+                </Box>
+                <Box sx={{ minWidth: 150 }}>
+                  <BasicSelect
+                    options={statusFilterOptions}
+                    mapping={{ label: 'label', value: 'value' }}
+                    value={selectedStatus}
+                    defaultText="All status"
+                    emptyable
+                    onChange={(event: SelectChangeEvent<unknown>) =>
+                      setSelectedStatus((event.target.value as string) || '')
+                    }
+                  />
+                </Box>
+              </>
+            )}
             <CustomButton
               variant="contained"
               sx={{
-                height: 36,
+                height: 38,
                 borderRadius: 999,
-                px: 2,
+                px: 2.2,
                 textTransform: 'none',
                 width: { xs: '100%', sm: 'auto' },
+                boxShadow: '0 10px 20px rgba(29, 78, 216, 0.25)',
               }}
-              onClick={() => setIsAddPipelineOpen(true)}
+              onClick={() => {
+                setPipelineModalMode('create');
+                setIsAddPipelineOpen(true);
+              }}
             >
               Create Pipeline
             </CustomButton>
             <CustomButton
               variant="contained"
-              sx={{ borderRadius: 999, px: 2.5, textTransform: 'none' }}
+              sx={{
+                borderRadius: 999,
+                px: 2.8,
+                textTransform: 'none',
+                boxShadow: '0 10px 20px rgba(29, 78, 216, 0.25)',
+              }}
               onClick={() => setIsAddDealOpen(true)}
             >
               Add Deal
@@ -256,6 +332,76 @@ const DealsPage = () => {
           </Stack>
         }
       />
+      <Popover
+        open={useFilterPopover && isFilterPopoverOpen}
+        anchorEl={filterAnchorEl}
+        onClose={() => setFilterAnchorEl(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        PaperProps={{
+          sx: {
+            mt: 1,
+            width: { xs: 'calc(100vw - 24px)', sm: 340 },
+            maxWidth: 'calc(100vw - 24px)',
+            p: 1.5,
+            borderRadius: 2,
+            border: `1px solid ${borderColor}`,
+            boxShadow: '0 16px 36px rgba(15, 23, 42, 0.16)',
+          },
+        }}
+      >
+        <Stack spacing={1.25}>
+          <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Filters</Typography>
+          <BasicInput
+            fullWidth
+            placeholder="Search deals"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+          />
+          <BasicSelect
+            options={pipelineFilterOptions}
+            mapping={{ label: 'label', value: 'value' }}
+            value={selectedPipelineId}
+            defaultText="All pipelines"
+            emptyable
+            isLoading={loadingPipelineOptions}
+            onChange={(event: SelectChangeEvent<unknown>) =>
+              setSelectedPipelineId((event.target.value as string) || '')
+            }
+          />
+          <BasicSelect
+            options={statusFilterOptions}
+            mapping={{ label: 'label', value: 'value' }}
+            value={selectedStatus}
+            defaultText="All status"
+            emptyable
+            onChange={(event: SelectChangeEvent<unknown>) =>
+              setSelectedStatus((event.target.value as string) || '')
+            }
+          />
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <CustomButton
+              variant="text"
+              customColor="#64748b"
+              sx={{ textTransform: 'none', px: 0 }}
+              onClick={() => {
+                setSearchQuery('');
+                setSelectedPipelineId('');
+                setSelectedStatus('');
+              }}
+            >
+              Clear Filters
+            </CustomButton>
+            <CustomButton
+              variant="contained"
+              sx={{ textTransform: 'none', borderRadius: 999, px: 2 }}
+              onClick={() => setFilterAnchorEl(null)}
+            >
+              Done
+            </CustomButton>
+          </Stack>
+        </Stack>
+      </Popover>
 
       <Box
         sx={{
@@ -264,8 +410,36 @@ const DealsPage = () => {
           border: `1px solid ${borderColor}`,
           backgroundColor: 'white',
           overflow: 'hidden',
+          flex: 1,
+          minHeight: 0,
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          alignItems={{ xs: 'flex-start', sm: 'center' }}
+          justifyContent="space-between"
+          sx={{
+            px: { xs: 1.5, sm: 2.5 },
+            py: 2,
+            gap: 1.5,
+            borderBottom: `1px solid ${borderColor}`,
+            background: `linear-gradient(135deg, ${bgSoft} 0%, #f8fbff 100%)`,
+          }}
+        >
+          {!loading ? (
+            <Typography sx={{ fontWeight: 700, color: '#0f172a' }}>
+              Total: {visibleTotalDeals} deals
+            </Typography>
+          ) : null}
+          {!loading ? (
+            <Typography sx={{ fontSize: 13, fontWeight: 600, color: mutedText }}>
+              Active pipeline opportunities
+            </Typography>
+          ) : null}
+        </Stack>
+
         {celebrationDealId ? (
           <Box
             sx={{
@@ -279,37 +453,27 @@ const DealsPage = () => {
               py: 1,
               color: '#166534',
               fontWeight: 700,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
+              boxShadow: '0 10px 20px rgba(22, 101, 52, 0.08)',
             }}
           >
-            🎉 Deal marked as won
+            Deal marked as won
           </Box>
         ) : null}
-        <Stack
-          direction={{ xs: 'column', sm: 'row' }}
-          alignItems={{ xs: 'flex-start', sm: 'center' }}
-          justifyContent="space-between"
+
+        <Box
           sx={{
-            px: { xs: 1.5, sm: 2.5 },
-            py: 2,
-            gap: 1.5,
-            borderBottom: `1px solid ${borderColor}`,
-            backgroundColor: bgSoft,
+            overflowX: 'hidden',
+            flex: 1,
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
           }}
         >
-          <Typography sx={{ fontWeight: 600, color: '#111827' }}>
-            Total: {totalDeals} deals
-          </Typography>
-        </Stack>
-
-        <Box sx={{ overflowX: { xs: 'visible', md: 'hidden' } }}>
           <Box
             sx={{
-              display: { xs: 'none', md: 'grid' },
+              display: { xs: 'none', lg: 'grid' },
               gridTemplateColumns:
-                'minmax(240px, 2.2fr) minmax(110px, 0.8fr) minmax(160px, 1.1fr) minmax(110px, 0.8fr) minmax(130px, 0.9fr) minmax(120px, 0.9fr) minmax(110px, 0.8fr)',
+                'minmax(180px, 1.7fr) minmax(170px, 1.4fr) minmax(170px, 1.4fr) minmax(150px, 1.3fr) minmax(150px, 1.2fr) minmax(110px, 0.9fr) minmax(130px, 1fr) minmax(120px, 1fr)',
               px: 2.5,
               py: 1.5,
               color: mutedText,
@@ -317,495 +481,365 @@ const DealsPage = () => {
               textTransform: 'uppercase',
               letterSpacing: '0.08em',
               borderBottom: `1px solid ${borderColor}`,
+              alignItems: 'center',
             }}
           >
-            <Box>Name</Box>
+            <Box>Deal Name</Box>
+            <Box>Deal Owner</Box>
+            <Box>Contact</Box>
             <Box>Pipeline</Box>
-            <Box>Area</Box>
-            <Box>Appointment Date</Box>
-            <Box>Price</Box>
             <Box>Stage</Box>
-            <Box textAlign="center">Actions</Box>
+            <Box>Status</Box>
+            <Box>Close Date</Box>
+            <Box textAlign="center">Action</Box>
           </Box>
 
           <Box
             sx={{
-              maxHeight: { xs: 'none', md: '50vh' },
-              overflowY: { xs: 'visible', md: 'auto' },
+              flex: { xs: 'unset', sm: 1 },
+              minHeight: { xs: 'auto', sm: 0 },
+              overflowY: { xs: 'visible', sm: 'auto' },
+              WebkitOverflowScrolling: 'touch',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+              '&::-webkit-scrollbar': {
+                display: 'none',
+              },
             }}
           >
-            {filteredDeals.map((deal, index) => {
-            const pipeline = pipelineMap.get(deal.pipelineId);
-            const stage = pipeline?.stages.get(deal.stageId);
-            return (
-              <Box
-                key={`${deal.id}-${index}`}
+            {loading ? (
+              Array.from({ length: 8 }).map((_, index) => (
+                <Box
+                  key={index}
+                  sx={{
+                    display: { xs: 'flex', lg: 'grid' },
+                    flexDirection: { xs: 'column', lg: 'unset' },
+                    gridTemplateColumns:
+                      'minmax(180px, 1.7fr) minmax(170px, 1.4fr) minmax(170px, 1.4fr) minmax(150px, 1.3fr) minmax(150px, 1.2fr) minmax(110px, 0.9fr) minmax(130px, 1fr) minmax(120px, 1fr)',
+                    px: { xs: 1.5, sm: 2.5 },
+                    py: { xs: 1.5, sm: 1.75 },
+                    gap: 1,
+                    borderBottom: `1px solid ${borderColor}`,
+                    borderRadius: { xs: 2, lg: 0 },
+                    backgroundColor: { xs: '#f8fbff', lg: 'transparent' },
+                    border: { xs: `1px solid ${borderColor}`, lg: 'none' },
+                    mb: { xs: 1.25, lg: 0 },
+                  }}
+                >
+                  {Array.from({ length: 8 }).map((__, itemIndex) => (
+                    <Skeleton key={itemIndex} height={26} />
+                  ))}
+                </Box>
+              ))
+            ) : hasError ? (
+              <Box sx={{ px: 2.5, py: 4 }}>
+                <Typography sx={{ color: '#dc2626', fontWeight: 600 }}>
+                  {errorMessage ?? 'Failed to load deals.'}
+                </Typography>
+              </Box>
+            ) : visibleDeals.length === 0 ? (
+              <Box sx={{ px: 2.5, py: 6, textAlign: 'center' }}>
+                <Typography sx={{ color: mutedText, fontWeight: 600 }}>
+                  No deals found.
+                </Typography>
+              </Box>
+            ) : (
+              visibleDeals.map((deal, index) => {
+                const effectiveStatus = statusOverrides[deal._id]?.status ?? deal.status;
+                const effectiveLostReason = statusOverrides[deal._id]?.lostReason ?? deal.lostReason ?? '';
+                const statusTone = getStatusTone(effectiveStatus);
+
+                return (
+                  <Box
+                    key={deal._id}
+                    sx={{
+                      display: { xs: 'flex', lg: 'grid' },
+                      flexDirection: { xs: 'column', lg: 'unset' },
+                      gridTemplateColumns:
+                        'minmax(180px, 1.7fr) minmax(170px, 1.4fr) minmax(170px, 1.4fr) minmax(150px, 1.3fr) minmax(150px, 1.2fr) minmax(110px, 0.9fr) minmax(130px, 1fr) minmax(120px, 1fr)',
+                      px: { xs: 1.5, sm: 2.5 },
+                      py: { xs: 1.5, sm: 1.75 },
+                      gap: { xs: 1.25, sm: 0 },
+                      alignItems: { lg: 'center' },
+                      borderBottom: index === visibleDeals.length - 1 ? 'none' : `1px solid ${borderColor}`,
+                      borderRadius: { xs: 2, lg: 0 },
+                      backgroundColor: { xs: '#f8fbff', lg: 'transparent' },
+                      border: { xs: `1px solid ${borderColor}`, lg: 'none' },
+                      mb: { xs: 1.25, lg: 0 },
+                      boxShadow: {
+                        xs: '0 6px 20px rgba(15, 23, 42, 0.05)',
+                        lg: 'none',
+                      },
+                      transition: 'background-color .2s ease',
+                      '&:hover': { backgroundColor: { lg: '#f8fbff' } },
+                    }}
+                  >
+                    <Box sx={{ display: { xs: 'flex', lg: 'block' }, justifyContent: { xs: 'space-between', lg: 'flex-start' } }}>
+                      <Typography variant="caption" sx={{ color: mutedText, display: { xs: 'block', lg: 'none' } }}>
+                        Deal Name
+                      </Typography>
+                      <Typography
+                        component={Link}
+                        to={`/deals/${deal._id}`}
+                        sx={{ fontWeight: 700, color: '#0f172a', textDecoration: 'none', '&:hover': { color: primary } }}
+                      >
+                        {deal.title}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: { xs: 'flex', lg: 'block' }, justifyContent: { xs: 'space-between', lg: 'flex-start' } }}>
+                      <Typography variant="caption" sx={{ color: mutedText, display: { xs: 'block', lg: 'none' } }}>
+                        Deal Owner
+                      </Typography>
+                      <Typography sx={{ fontWeight: 600, color: '#1f2937' }}>
+                        {deal.dealOwner?.name ?? '-'}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: { xs: 'flex', lg: 'block' }, justifyContent: { xs: 'space-between', lg: 'flex-start' } }}>
+                      <Typography variant="caption" sx={{ color: mutedText, display: { xs: 'block', lg: 'none' } }}>
+                        Contact
+                      </Typography>
+                      <Typography sx={{ fontWeight: 600, color: '#1f2937' }}>
+                        {formatContactName(deal.contact)}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: { xs: 'flex', lg: 'block' }, justifyContent: { xs: 'space-between', lg: 'flex-start' } }}>
+                      <Typography variant="caption" sx={{ color: mutedText, display: { xs: 'block', lg: 'none' } }}>
+                        Pipeline
+                      </Typography>
+                      <Typography sx={{ fontWeight: 600, color: '#1f2937' }}>
+                        {deal.pipeline?.name ?? '-'}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: { xs: 'flex', lg: 'block' }, justifyContent: { xs: 'space-between', lg: 'flex-start' } }}>
+                      <Typography variant="caption" sx={{ color: mutedText, display: { xs: 'block', lg: 'none' } }}>
+                        Stage
+                      </Typography>
+                      <Typography sx={{ fontWeight: 600, color: '#1f2937' }}>
+                        {deal.stage?.name ?? '-'}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: { xs: 'flex', lg: 'block' }, justifyContent: { xs: 'space-between', lg: 'flex-start' } }}>
+                      <Typography variant="caption" sx={{ color: mutedText, display: { xs: 'block', lg: 'none' } }}>
+                        Status
+                      </Typography>
+                      <Typography
+                        sx={{
+                          fontWeight: 700,
+                          color: statusTone.color,
+                          textTransform: 'capitalize',
+                          fontSize: 12,
+                          px: 1.2,
+                          py: 0.45,
+                          borderRadius: 999,
+                          border: `1px solid ${statusTone.border}`,
+                          backgroundColor: statusTone.bg,
+                          display: 'inline-flex',
+                        }}
+                      >
+                        {effectiveStatus}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: { xs: 'flex', lg: 'block' }, justifyContent: { xs: 'space-between', lg: 'flex-start' } }}>
+                      <Typography variant="caption" sx={{ color: mutedText, display: { xs: 'block', lg: 'none' } }}>
+                        Close Date
+                      </Typography>
+                      <Typography sx={{ fontWeight: 600, color: '#1f2937' }}>
+                        {formatCloseDate(deal.expectedCloseDate)}
+                      </Typography>
+                    </Box>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        justifyContent: { xs: 'flex-end', lg: 'center' },
+                        alignItems: 'center',
+                        gap: 1,
+                        flexWrap: 'nowrap',
+                      }}
+                    >
+                      <CustomTooltip title="Mark as Won" placement="top">
+                        <CustomIconButton
+                          size="small"
+                          sx={{
+                            width: 33,
+                            height: 33,
+                            borderRadius: 999,
+                            border: '1px solid #22c55e',
+                            backgroundColor: '#f0fdf4',
+                            '&:hover': { backgroundColor: '#dcfce7' },
+                          }}
+                          onClick={() => handleMarkWon(deal._id)}
+                        >
+                          <CheckCircleOutlined sx={{ fontSize: 16, color: '#16a34a' }} />
+                        </CustomIconButton>
+                      </CustomTooltip>
+                      <CustomTooltip title="Mark as Lost" placement="top">
+                        <CustomIconButton
+                          size="small"
+                          sx={{
+                            width: 33,
+                            height: 33,
+                            borderRadius: 999,
+                            border: '1px solid #f87171',
+                            backgroundColor: '#fef2f2',
+                            '&:hover': { backgroundColor: '#fee2e2' },
+                          }}
+                          onClick={() => {
+                            setLostDealId(deal._id);
+                            setLostReason(effectiveLostReason);
+                          }}
+                        >
+                          <CancelOutlined sx={{ fontSize: 16, color: '#ef4444' }} />
+                        </CustomIconButton>
+                      </CustomTooltip>
+                      <CustomTooltip title="Delete Deal" placement="top">
+                        <CustomIconButton
+                          size="small"
+                          sx={{
+                            width: 33,
+                            height: 33,
+                            borderRadius: 999,
+                            border: '1px solid #fca5a5',
+                            backgroundColor: '#fff1f2',
+                            '&:hover': { backgroundColor: '#ffe4e6' },
+                          }}
+                          onClick={() => setDealToDeleteId(deal._id)}
+                        >
+                          <DeleteOutline sx={{ fontSize: 16, color: '#ef4444' }} />
+                        </CustomIconButton>
+                      </CustomTooltip>
+                      <CustomTooltip title="Edit (coming soon)" placement="top">
+                        <CustomIconButton
+                          size="small"
+                          sx={{
+                            width: 33,
+                            height: 33,
+                            borderRadius: 999,
+                            border: '1px solid #cbd5e1',
+                            backgroundColor: '#f8fafc',
+                            '&:hover': { backgroundColor: '#f1f5f9' },
+                          }}
+                        >
+                          <EditOutlined sx={{ fontSize: 16, color: '#64748b' }} />
+                        </CustomIconButton>
+                      </CustomTooltip>
+                    </Box>
+                  </Box>
+                );
+              })
+            )}
+          </Box>
+        </Box>
+
+        {!loading ? (
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: { xs: 1, sm: 2 },
+              px: { xs: 1.5, sm: 2.5 },
+              py: { xs: 1.25, sm: 2 },
+              borderTop: `1px solid ${borderColor}`,
+              backgroundColor: 'white',
+              flexWrap: 'nowrap',
+              overflowX: 'auto',
+            }}
+          >
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ flexShrink: 0 }}>
+              <Typography sx={{ color: mutedText, fontSize: 13, display: { xs: 'none', sm: 'block' } }}>
+                Rows per page
+              </Typography>
+              <Select
+                size="small"
+                value={String(limit)}
+                onChange={(event) => setLimit(Number(event.target.value))}
                 sx={{
-                  display: { xs: 'flex', md: 'grid' },
-                  flexDirection: { xs: 'column', md: 'unset' },
-                  gridTemplateColumns:
-                    'minmax(240px, 2.2fr) minmax(110px, 0.8fr) minmax(160px, 1.1fr) minmax(110px, 0.8fr) minmax(130px, 0.9fr) minmax(120px, 0.9fr) minmax(110px, 0.8fr)',
-                  px: { xs: 1.5, sm: 2.5 },
-                  py: { xs: 1.5, sm: 1.75 },
-                  gap: { xs: 1.25, sm: 0 },
-                  alignItems: { md: 'center' },
-                  borderBottom:
-                    index === filteredDeals.length - 1
-                      ? 'none'
-                      : `1px solid ${borderColor}`,
+                  minWidth: 84,
+                  height: 32,
+                  borderRadius: 999,
+                  '& .MuiSelect-select': {
+                    py: 0.5,
+                    px: 1.25,
+                  },
                 }}
               >
-                <Stack direction="row" spacing={1.5} alignItems="center">
-                  <Avatar
-                    sx={{
-                      width: 36,
-                      height: 36,
-                      bgcolor: '#eef2ff',
-                      color: primary,
-                      fontWeight: 700,
-                      fontSize: 13,
-                    }}
-                  >
-                    {deal.avatar}
-                  </Avatar>
-                  <Box>
-                    <Typography
-                      component={Link}
-                      to={`/deals/${deal.id}`}
-                      sx={{
-                        fontWeight: 600,
-                        color: '#1f2937',
-                        textDecoration: 'none',
-                        marginRight: '8px',
-                        '&:hover': { color: primary },
-                      }}
-                    >
-                      {deal.name}
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: mutedText }}>
-                      {deal.location}
-                    </Typography>
-                  </Box>
-                </Stack>
-
-                <Box
-                  sx={{
-                    display: { xs: 'flex', md: 'block' },
-                    justifyContent: { xs: 'space-between', md: 'flex-start' },
-                    alignItems: { xs: 'center', md: 'flex-start' },
-                  }}
-                >
-                  <Typography
-                    variant="caption"
-                    sx={{ color: mutedText, display: { xs: 'block', md: 'none' } }}
-                  >
-                    Pipeline
-                  </Typography>
-                  <Box
-                    sx={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      px: 1.4,
-                      py: 0.35,
-                      borderRadius: 999,
-                      fontSize: 12,
-                      fontWeight: 700,
-                      color: '#1f2937',
-                      backgroundColor: '#f1f5f9',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.04em',
-                    }}
-                  >
-                    {pipeline?.name ?? 'Pipeline'}
-                  </Box>
-                </Box>
-
-                <Box
-                  sx={{
-                    display: { xs: 'flex', md: 'block' },
-                    justifyContent: { xs: 'space-between', md: 'flex-start' },
-                    alignItems: { xs: 'center', md: 'flex-start' },
-                  }}
-                >
-                  <Typography
-                    variant="caption"
-                    sx={{ color: mutedText, display: { xs: 'block', md: 'none' } }}
-                  >
-                    Area
-                  </Typography>
-                  <Typography sx={{ fontWeight: 600, color: '#1f2937' }}>
-                    {deal.area}
-                  </Typography>
-                </Box>
-
-                <Box
-                  sx={{
-                    display: { xs: 'flex', md: 'block' },
-                    justifyContent: { xs: 'space-between', md: 'flex-start' },
-                    alignItems: { xs: 'center', md: 'flex-start' },
-                  }}
-                >
-                  <Typography
-                    variant="caption"
-                    sx={{ color: mutedText, display: { xs: 'block', md: 'none' } }}
-                  >
-                    Appointment Date
-                  </Typography>
-                  <Typography sx={{ fontWeight: 600, color: '#1f2937' }}>
-                    {deal.appointment}
-                  </Typography>
-                </Box>
-
-                <Box
-                  sx={{
-                    display: { xs: 'flex', md: 'block' },
-                    justifyContent: { xs: 'space-between', md: 'flex-start' },
-                    alignItems: { xs: 'center', md: 'flex-start' },
-                  }}
-                >
-                  <Typography
-                    variant="caption"
-                    sx={{ color: mutedText, display: { xs: 'block', md: 'none' } }}
-                  >
-                    Price
-                  </Typography>
-                  <Typography sx={{ fontWeight: 700, color: '#1f2937' }}>
-                    {deal.price}
-                  </Typography>
-                </Box>
-
-                <Box
-                  sx={{
-                    display: { xs: 'flex', md: 'block' },
-                    justifyContent: { xs: 'space-between', md: 'flex-start' },
-                    alignItems: { xs: 'center', md: 'flex-start' },
-                  }}
-                >
-                  <Typography
-                    variant="caption"
-                    sx={{ color: mutedText, display: { xs: 'block', md: 'none' } }}
-                  >
-                    Stage
-                  </Typography>
-                  <Box
-                    sx={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      px: 1.5,
-                      py: 0.4,
-                      borderRadius: 999,
-                      fontSize: 12,
-                      fontWeight: 700,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
-                      color: stage?.color ?? statusStyles[deal.status].color,
-                      backgroundColor:
-                        stage?.background ?? statusStyles[deal.status].background,
-                    }}
-                  >
-                    {stage?.name ?? deal.status}
-                  </Box>
-                </Box>
-
-                <Box
-                  sx={{
-                    display: 'flex',
-                    justifyContent: { xs: 'flex-end', md: 'center' },
-                    alignItems: 'center',
-                    flexDirection: 'row',
-                    gap: 1,
-                    flexWrap: 'nowrap',
-                  }}
-                >
-                  <CustomTooltip title="Mark as Won" placement="top">
-                    <CustomIconButton
-                      size="small"
-                      sx={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: 999,
-                        border: `1px solid #16a34a`,
-                        color: '#16a34a',
-                        backgroundColor: 'white',
-                        '&:hover': {
-                          border: `1px solid #16a34a`,
-                        },
-                      }}
-                      onClick={() => handleMarkWon(deal.id)}
-                    >
-                      <CheckCircleOutlined sx={{ fontSize: 16, color: '#16a34a' }} />
-                    </CustomIconButton>
-                  </CustomTooltip>
-                  <CustomTooltip title="Mark as Lost" placement="top">
-                    <CustomIconButton
-                      size="small"
-                      sx={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: 999,
-                        border: `1px solid #ef4444`,
-                        color: '#ef4444',
-                        backgroundColor: 'white',
-                        '&:hover': {
-                          border: `1px solid #ef4444`,
-                        },
-                      }}
-                      onClick={() => {
-                        setLostDeal(deal);
-                        setLostReason(deal.lostReason ?? '');
-                      }}
-                    >
-                      <CancelOutlined sx={{ fontSize: 16, color: '#ef4444' }} />
-                    </CustomIconButton>
-                  </CustomTooltip>
-                  <CustomTooltip title="Edit Deal" placement="top">
-                    <CustomIconButton
-                      size="small"
-                      sx={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: 999,
-                        border: `1px solid #64748b`,
-                        color: '#64748b',
-                        backgroundColor: 'white',
-                        '&:hover': {
-                          border: `1px solid #64748b`,
-                        },
-                      }}
-                      onClick={() => setEditingDeal(deal)}
-                    >
-                      <EditOutlined sx={{ fontSize: 16, color: '#64748b' }} />
-                    </CustomIconButton>
-                  </CustomTooltip>
-                </Box>
-              </Box>
-            );
-          })}
+                {PAGE_LIMIT_OPTIONS.map((option) => (
+                  <MenuItem key={option} value={option}>
+                    {option}
+                  </MenuItem>
+                ))}
+              </Select>
+            </Stack>
+            <Stack
+              direction="row"
+              spacing={1.25}
+              alignItems="center"
+              sx={{ ml: 'auto', flexShrink: 0 }}
+            >
+              <Typography sx={{ color: mutedText, fontSize: 13 }}>
+                {visibleTotalDeals === 0 ? '0 results' : `${pageStart}-${pageEnd} of ${visibleTotalDeals}`}
+              </Typography>
+              <Pagination
+                page={page}
+                count={totalPages}
+                onChange={(_, value) => {
+                  if (value !== page) {
+                    setPage(value);
+                  }
+                }}
+                disabled={totalPages <= 1}
+                shape="rounded"
+                size="small"
+                color="primary"
+                siblingCount={0}
+                boundaryCount={1}
+                sx={{
+                  '& .MuiPaginationItem-root': {
+                    borderRadius: 999,
+                  },
+                }}
+              />
+            </Stack>
           </Box>
-        </Box>
-
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 2.5 }}>
-          <CustomButton
-            variant="outlined"
-            customColor="#94a3b8"
-            sx={{ borderRadius: 999, px: 3, textTransform: 'none' }}
-          >
-            Load More
-          </CustomButton>
-        </Box>
+        ) : null}
       </Box>
 
-      <CustomModal
-        open={Boolean(lostDeal)}
-        handleClose={() => {
-          setLostDeal(null);
+      <AddDealModal
+        open={isAddDealOpen}
+        onClose={() => setIsAddDealOpen(false)}
+        onSave={() => {
+          setIsAddDealOpen(false);
+          void refetch();
+        }}
+      />
+
+      <MarkLostDealModal
+        open={Boolean(lostDealId)}
+        lostReason={lostReason}
+        onLostReasonChange={setLostReason}
+        onClose={() => {
+          setLostDealId(null);
           setLostReason('');
         }}
-        handleSubmit={handleConfirmLost}
-        title="Mark Deal as Lost"
-        description="Tell us why this deal was lost."
-        submitButtonText="Save Reason"
-      >
-        <Stack spacing={1.5}>
-          <BasicInput
-            fullWidth
-            multiline
-            minRows={3}
-            height="auto"
-            placeholder="Lost reason"
-            value={lostReason}
-            onChange={(event) => setLostReason(event.target.value)}
-            sx={{ alignItems: 'flex-start', py: 1 }}
-          />
-        </Stack>
-      </CustomModal>
-
-      <AddDealModal
-        open={isAddDealOpen || Boolean(editingDeal)}
-        onClose={() => {
-          setIsAddDealOpen(false);
-          setEditingDeal(null);
-        }}
-        initialDeal={editingDeal}
-        onSave={(payload) => {
-          if (editingDeal) {
-            setDealList((prev) =>
-              prev.map((deal) =>
-                deal.id === editingDeal.id
-                  ? {
-                      ...deal,
-                      name: payload.name,
-                      location: payload.location,
-                      area: payload.area,
-                      appointment: payload.appointment,
-                      price: payload.price,
-                      roomArea: payload.roomArea,
-                      people: payload.people,
-                      roomAccess: payload.roomAccess,
-                      instructions: payload.instructions,
-                      pipelineId: payload.pipelineId,
-                      stageId: payload.stageId,
-                    }
-                  : deal,
-              ),
-            );
-            setEditingDeal(null);
-          } else {
-            const initials = payload.name
-              .split(' ')
-              .map((part) => part[0])
-              .join('')
-              .slice(0, 2)
-              .toUpperCase();
-            setDealList((prev) => [
-              ...prev,
-              {
-                id: prev.length ? prev[prev.length - 1].id + 1 : 1,
-                name: payload.name,
-                location: payload.location,
-                area: payload.area,
-                appointment: payload.appointment,
-                price: payload.price,
-                status: 'In Progress',
-                pipelineId: payload.pipelineId,
-                stageId: payload.stageId,
-                avatar: initials || 'DL',
-                customer: 'New Contact',
-                email: 'new@client.com',
-                phone: '000-000-0000',
-                address: '',
-                progress: 'In Progress',
-                roomArea: payload.roomArea,
-                people: payload.people,
-                roomAccess: payload.roomAccess,
-                instructions: payload.instructions,
-                activity: [],
-              },
-            ]);
-            setIsAddDealOpen(false);
-          }
-        }}
-        pipelines={pipelines}
+        onSubmit={handleConfirmLost}
       />
-      <CustomModal
+
+      <DeleteDealModal
+        open={Boolean(dealToDeleteId)}
+        onClose={() => setDealToDeleteId(null)}
+        onSubmit={handleConfirmDelete}
+      />
+
+      <PipelineModal
         open={isAddPipelineOpen}
-        handleClose={() => setIsAddPipelineOpen(false)}
-        handleSubmit={handleCreatePipeline}
-        title="Create Pipeline"
-        description="Add a pipeline and define its stages."
-        submitButtonText="Create"
-      >
-        <Stack spacing={1.5}>
-          <Box>
-            <Typography sx={{ fontWeight: 700, color: '#0f172a', mb: 0.5 }}>
-              Pipeline Name
-            </Typography>
-            <BasicInput
-              fullWidth
-              placeholder="Example: Enterprise Sales"
-              value={pipelineName}
-              onChange={(event) => setPipelineName(event.target.value)}
-            />
-          </Box>
-          <Stack spacing={1}>
-            <Typography sx={{ fontWeight: 700, color: '#0f172a', mb: 0.5 }}>
-              Stages & Colors
-            </Typography>
-            <Box
-              sx={{
-                maxHeight: { xs: 220, sm: 260 },
-                overflowY: 'auto',
-                pr: 0.5,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 1,
-              }}
-            >
-              {stageDrafts.map((stage) => (
-                <Box
-                  key={stage.id}
-                  sx={{
-                    display: 'grid',
-                    gridTemplateColumns: { xs: '1fr auto', sm: '1.4fr 0.8fr' },
-                    gap: 1,
-                    alignItems: 'center',
-                  }}
-                >
-                  <BasicInput
-                    fullWidth
-                    placeholder="Stage name"
-                    value={stage.name}
-                    onChange={(event) =>
-                      setStageDrafts((prev) =>
-                        prev.map((item) =>
-                          item.id === stage.id ? { ...item, name: event.target.value } : item,
-                        ),
-                      )
-                    }
-                  />
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 1,
-                      flexWrap: 'nowrap',
-                    }}
-                  >
-                    <Box
-                      component="input"
-                      type="color"
-                      value={stage.color}
-                      onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                        setStageDrafts((prev) =>
-                          prev.map((item) =>
-                            item.id === stage.id ? { ...item, color: event.target.value } : item,
-                          ),
-                        )
-                      }
-                      sx={{
-                        width: 42,
-                        height: 42,
-                        border: 'none',
-                        borderRadius: 3,
-                        padding: 0,
-                        backgroundColor: 'transparent',
-                      }}
-                    />
-                    <CustomButton
-                      variant="outlined"
-                      customColor="#ef4444"
-                      sx={{ borderRadius: 999, px: 1.75, textTransform: 'none' }}
-                      onClick={() =>
-                        setStageDrafts((prev) => prev.filter((item) => item.id !== stage.id))
-                      }
-                      disabled={stageDrafts.length <= 1}
-                    >
-                      Remove
-                    </CustomButton>
-                  </Box>
-                </Box>
-              ))}
-            </Box>
-            <CustomButton
-              variant="outlined"
-              customColor="#94a3b8"
-              sx={{ borderRadius: 999, px: 2.5, textTransform: 'none', alignSelf: 'flex-start' }}
-              onClick={() =>
-                setStageDrafts((prev) => [
-                  ...prev,
-                  {
-                    id: `stage-${Date.now()}`,
-                    name: '',
-                    color: stagePalette[prev.length % stagePalette.length],
-                  },
-                ])
-              }
-            >
-              Add Stage
-            </CustomButton>
-          </Stack>
-        </Stack>
-      </CustomModal>
+        mode={pipelineModalMode}
+        onClose={() => {
+          setIsAddPipelineOpen(false);
+        }}
+        onCreateSuccess={(pipeline) =>
+          dispatch(addPipelineOption({ _id: pipeline.id, name: pipeline.name }))
+        }
+      />
     </Box>
   );
 };

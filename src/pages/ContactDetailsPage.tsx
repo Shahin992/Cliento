@@ -29,7 +29,7 @@ import AddContactModal from '../components/contacts/modals/AddContactModal';
 import ConfirmationAlertModal from '../common/ConfirmationAlertModal';
 import { useToast } from '../common/ToastProvider';
 import { deals } from '../data/deals';
-import { type ContactDetails } from '../services/contacts';
+import { type ContactDetails } from '../hooks/contacts/contactTypes';
 import { useContactByIdQuery } from '../hooks/contacts/useContactsQueries';
 import { useDeleteContactMutation } from '../hooks/contacts/useContactsMutations';
 

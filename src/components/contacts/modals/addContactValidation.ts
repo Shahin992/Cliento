@@ -1,4 +1,4 @@
-import type { CreateContactPayload } from '../../../services/contacts';
+import type { CreateContactPayload } from '../../../hooks/contacts/contactTypes';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 

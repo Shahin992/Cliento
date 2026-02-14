@@ -5,7 +5,7 @@ import { AddOutlined, CloseOutlined, DeleteOutlineOutlined } from '@mui/icons-ma
 import { MuiTelInput } from 'mui-tel-input';
 
 import { CustomButton } from '../../../common/CustomButton';
-import { type ContactListItem } from '../../../services/contacts';
+import { type ContactListItem } from '../../../hooks/contacts/contactTypes';
 import {
   useCreateContactMutation,
   useUpdateContactMutation,

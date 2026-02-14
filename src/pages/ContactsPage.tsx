@@ -30,7 +30,7 @@ import { CustomButton } from '../common/CustomButton';
 import ConfirmationAlertModal from '../common/ConfirmationAlertModal';
 import { useToast } from '../common/ToastProvider';
 import AddContactModal from '../components/contacts/modals/AddContactModal';
-import { type ContactListItem } from '../services/contacts';
+import { type ContactListItem } from '../hooks/contacts/contactTypes';
 import { useContactsQuery } from '../hooks/contacts/useContactsQueries';
 import { useDeleteContactMutation } from '../hooks/contacts/useContactsMutations';
 

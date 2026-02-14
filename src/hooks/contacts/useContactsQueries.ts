@@ -1,5 +1,5 @@
 import { useAppQuery } from '../useAppQuery';
-import type { ContactDetails, GetContactsResponse } from '../../services/contacts';
+import type { ContactDetails, GetContactsResponse } from './contactTypes';
 
 export const contactsQueryKeys = {
   all: ['contacts'] as const,

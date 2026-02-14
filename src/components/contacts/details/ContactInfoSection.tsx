@@ -1,6 +1,6 @@
 import { Box, Typography } from '@mui/material';
 
-import type { ContactDetails } from '../../../services/contacts';
+import type { ContactDetails } from '../../../hooks/contacts/contactTypes';
 import { labelSx, sectionCardSx, valueBoxSx } from './contactStyles';
 
 interface ContactInfoSectionProps {

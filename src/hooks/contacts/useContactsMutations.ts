@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { appHttp } from '../useAppQuery';
-import type { CreateContactPayload } from '../../services/contacts';
+import type { CreateContactPayload } from './contactTypes';
 import { contactsQueryKeys } from './useContactsQueries';
 
 type ContactIdPayload = { contactId: string };

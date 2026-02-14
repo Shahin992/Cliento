@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { Box, useMediaQuery, useTheme } from '@mui/material';
 import {
@@ -30,6 +30,7 @@ const navItems = [
 ];
 
 const AppLayout = () => {
+  const navigate = useNavigate();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isAddDealOpen, setIsAddDealOpen] = useState(false);
@@ -38,6 +39,16 @@ const AppLayout = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const currentDrawerWidth = isCollapsed ? collapsedWidth : drawerWidth;
   const topbarMinHeight = { xs: 96, sm: 72 };
+
+  const handleTopbarDealSave = () => {
+    setIsAddDealOpen(false);
+    void navigate('/deals');
+  };
+
+  const handleTopbarContactSave = async () => {
+    setIsAddContactOpen(false);
+    await navigate('/contacts');
+  };
 
   return (
     <Box
@@ -91,14 +102,14 @@ const AppLayout = () => {
         open={isAddDealOpen}
         pipelines={seedPipelines}
         onClose={() => setIsAddDealOpen(false)}
-        onSave={() => setIsAddDealOpen(false)}
+        onSave={handleTopbarDealSave}
       />
       )}
      {isAddContactOpen && ( 
       <AddContactModal
         open={isAddContactOpen}
         onClose={() => setIsAddContactOpen(false)}
-        onSave={() => setIsAddContactOpen(false)}
+        onSave={handleTopbarContactSave}
       />)}
     </Box>
   );

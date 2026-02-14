@@ -2,7 +2,7 @@ import { Avatar, Box, Divider, Stack, Typography } from '@mui/material';
 import { CustomIconButton as IconButton } from '../../../common/CustomIconButton';
 import { AddOutlined } from '@mui/icons-material';
 
-import type { ContactDetails } from '../../../services/contacts';
+import type { ContactDetails } from '../../../hooks/contacts/contactTypes';
 import { borderColor, mutedText, primary, railBg, sectionCardSx } from './contactStyles';
 
 interface ContactDealsSectionProps {
