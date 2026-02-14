@@ -22,18 +22,25 @@ import type { SelectChangeEvent } from '@mui/material';
 
 import PageHeader from '../components/PageHeader';
 import { CustomButton } from '../common/CustomButton';
+import ConfirmationAlertModal from '../common/ConfirmationAlertModal';
 import BasicInput from '../common/BasicInput';
 import BasicSelect from '../common/BasicSelect';
 import CustomTooltip from '../common/CustomTooltip';
 import { CustomIconButton } from '../common/CustomIconButton';
 import AddDealModal from '../components/deals/modals/AddDealModal';
-import DeleteDealModal from '../components/deals/modals/DeleteDealModal';
+import type { AddDealInitialData } from '../components/deals/modals/AddDealModal';
 import MarkLostDealModal from '../components/deals/modals/MarkLostDealModal';
 import PipelineModal from '../components/deals/modals/PipelineModal';
 import { useDealsQuery } from '../hooks/deals/useDealsQueries';
+import {
+  useDeleteDealMutation,
+  useMarkDealLostMutation,
+  useMarkDealWonMutation,
+} from '../hooks/deals/useDealsMutations';
 import { usePipelinesOptionsQuery } from '../hooks/pipelines/usePipelinesQueries';
 import { useAppDispatch, useAppSelector } from '../app/hooks';
 import { addPipelineOption, setPipelineOptions } from '../features/pipelines/pipelinesSlice';
+import { validateDealId, validateLostReason } from '../components/deals/modals/lostReasonValidation';
 
 const borderColor = '#dbe4f0';
 const mutedText = '#6b7a90';
@@ -72,11 +79,18 @@ const getStatusTone = (status: string) => {
   return { color: '#1e3a8a', bg: '#e8f0ff', border: '#bfdbfe' };
 };
 
+const normalizeDealStatus = (status?: string | null) => {
+  const normalized = (status ?? '').trim().toLowerCase();
+  if (normalized === 'won' || normalized === 'lost') return normalized;
+  return 'open';
+};
+
 const DealsPage = () => {
   const dispatch = useAppDispatch();
   const useFilterPopover = useMediaQuery('(max-width:1039.95px)');
   const reduxPipelines = useAppSelector((state) => state.pipelines.options);
   const [isAddDealOpen, setIsAddDealOpen] = useState(false);
+  const [editingDeal, setEditingDeal] = useState<AddDealInitialData | null>(null);
   const [isAddPipelineOpen, setIsAddPipelineOpen] = useState(false);
   const [pipelineModalMode, setPipelineModalMode] = useState<'create' | 'edit'>('create');
   const [selectedPipelineId, setSelectedPipelineId] = useState('');
@@ -90,14 +104,32 @@ const DealsPage = () => {
   const [statusOverrides, setStatusOverrides] = useState<
     Record<string, { status: string; lostReason?: string | null }>
   >({});
-  const [deletedDealIds, setDeletedDealIds] = useState<Record<string, true>>({});
   const [lostDealId, setLostDealId] = useState<string | null>(null);
   const [lostReason, setLostReason] = useState('');
+  const [lostReasonError, setLostReasonError] = useState<string | null>(null);
+  const [wonDealId, setWonDealId] = useState<string | null>(null);
+  const [wonError, setWonError] = useState<string | null>(null);
   const [dealToDeleteId, setDealToDeleteId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [celebrationDealId, setCelebrationDealId] = useState<string | null>(null);
+  const {
+    markDealLost,
+    loading: markingDealLost,
+    errorMessage: markDealLostErrorMessage,
+  } = useMarkDealLostMutation();
+  const {
+    markDealWon,
+    loading: markingDealWon,
+    errorMessage: markDealWonErrorMessage,
+  } = useMarkDealWonMutation();
+  const {
+    deleteDeal,
+    loading: deletingDeal,
+    errorMessage: deleteDealErrorMessage,
+  } = useDeleteDealMutation();
 
   const { pipelines: apiPipelines, loading: loadingPipelineOptions } = usePipelinesOptionsQuery(true);
-  const { deals, pagination, loading, hasError, errorMessage, refetch } = useDealsQuery(
+  const { deals, pagination, loading, hasError, errorMessage } = useDealsQuery(
     page,
     limit,
     debouncedSearchQuery || undefined,
@@ -160,12 +192,8 @@ const DealsPage = () => {
       ? Math.max(0, Number(pagination?.total) || 0)
       : firstPageTotal;
 
-  const visibleDeals = useMemo(
-    () => deals.filter((deal) => !deletedDealIds[deal._id]),
-    [deals, deletedDealIds],
-  );
-
-  const visibleTotalDeals = Math.max(0, totalDeals - Object.keys(deletedDealIds).length);
+  const visibleDeals = useMemo(() => deals, [deals]);
+  const visibleTotalDeals = totalDeals;
   const totalPages = Math.max(1, Number(pagination?.totalPages) || 1);
   const serverLimit = Math.max(1, Number(pagination?.limit) || limit);
   const pageStart = visibleTotalDeals === 0 ? 0 : (page - 1) * serverLimit + 1;
@@ -192,30 +220,71 @@ const DealsPage = () => {
     [],
   );
 
-  const handleMarkWon = (dealId: string) => {
-    setStatusOverrides((prev) => ({
-      ...prev,
-      [dealId]: { status: 'won', lostReason: null },
-    }));
-    setCelebrationDealId(dealId);
-    window.setTimeout(() => setCelebrationDealId(null), 1800);
+  const handleOpenWonConfirm = (dealId: string, currentStatus: string) => {
+    if (normalizeDealStatus(currentStatus) === 'won') return;
+    setWonError(null);
+    setWonDealId(dealId);
   };
 
-  const handleConfirmLost = () => {
+  const handleConfirmWon = async () => {
+    if (!wonDealId) return;
+    const validation = validateDealId(wonDealId);
+    if (!validation.success) {
+      setWonError(validation.message);
+      return;
+    }
+
+    setWonError(null);
+    try {
+      await markDealWon({ dealId: validation.value });
+      setStatusOverrides((prev) => ({
+        ...prev,
+        [validation.value]: { status: 'won', lostReason: null },
+      }));
+      setCelebrationDealId(validation.value);
+      window.setTimeout(() => setCelebrationDealId(null), 1800);
+      setWonDealId(null);
+    } catch {
+      // Error message is surfaced from mutation state.
+    }
+  };
+
+  const handleConfirmLost = async () => {
     if (!lostDealId) return;
-    const reason = lostReason.trim();
-    setStatusOverrides((prev) => ({
-      ...prev,
-      [lostDealId]: { status: 'lost', lostReason: reason || 'No reason provided' },
-    }));
-    setLostDealId(null);
-    setLostReason('');
+    const validation = validateLostReason(lostReason);
+    if (!validation.success) {
+      setLostReasonError(validation.message);
+      return;
+    }
+
+    setLostReasonError(null);
+    try {
+      await markDealLost({
+        dealId: lostDealId,
+        lostReason: validation.value,
+      });
+      setLostDealId(null);
+      setLostReason('');
+    } catch {
+      // Error message is surfaced from mutation state in modal.
+    }
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!dealToDeleteId) return;
-    setDeletedDealIds((prev) => ({ ...prev, [dealToDeleteId]: true }));
-    setDealToDeleteId(null);
+    const validation = validateDealId(dealToDeleteId);
+    if (!validation.success) {
+      setDeleteError(validation.message);
+      return;
+    }
+
+    setDeleteError(null);
+    try {
+      await deleteDeal(validation.value);
+      setDealToDeleteId(null);
+    } catch {
+      // Error surfaced from mutation state.
+    }
   };
 
   const isFilterPopoverOpen = Boolean(filterAnchorEl);
@@ -245,8 +314,8 @@ const DealsPage = () => {
             spacing={1}
             alignItems="center"
             justifyContent="flex-end"
-            flexWrap="wrap"
-            sx={{ width: { xs: '100%', sm: 'auto' } }}
+            flexWrap={{ xs: 'nowrap', sm: 'wrap' }}
+            sx={{ width: { xs: '100%', sm: 'auto' }, pr: { xs: '20px', sm: 0 } }}
           >
             {useFilterPopover ? (
               <CustomIconButton
@@ -255,6 +324,7 @@ const DealsPage = () => {
                 sx={{
                   width: 38,
                   height: 38,
+                  flexShrink: 0,
                   borderRadius: 999,
                   border: `1px solid ${borderColor}`,
                   backgroundColor: 'white',
@@ -305,9 +375,12 @@ const DealsPage = () => {
               sx={{
                 height: 38,
                 borderRadius: 999,
-                px: 2.2,
+                px: { xs: 1.2, sm: 2.2 },
                 textTransform: 'none',
-                width: { xs: '100%', sm: 'auto' },
+                width: { xs: 'auto', sm: 'auto' },
+                flex: { xs: '0 1 auto', sm: '0 0 auto' },
+                minWidth: 0,
+                fontSize: { xs: 11.5, sm: 14 },
                 boxShadow: '0 10px 20px rgba(29, 78, 216, 0.25)',
               }}
               onClick={() => {
@@ -320,12 +393,20 @@ const DealsPage = () => {
             <CustomButton
               variant="contained"
               sx={{
+                height: 38,
                 borderRadius: 999,
-                px: 2.8,
+                px: { xs: 1.2, sm: 2.8 },
                 textTransform: 'none',
+                width: { xs: 'auto', sm: 'auto' },
+                flex: { xs: '0 1 auto', sm: '0 0 auto' },
+                minWidth: 0,
+                fontSize: { xs: 11.5, sm: 14 },
                 boxShadow: '0 10px 20px rgba(29, 78, 216, 0.25)',
               }}
-              onClick={() => setIsAddDealOpen(true)}
+              onClick={() => {
+                setEditingDeal(null);
+                setIsAddDealOpen(true);
+              }}
             >
               Add Deal
             </CustomButton>
@@ -545,39 +626,246 @@ const DealsPage = () => {
               </Box>
             ) : (
               visibleDeals.map((deal, index) => {
-                const effectiveStatus = statusOverrides[deal._id]?.status ?? deal.status;
+                const effectiveStatus = normalizeDealStatus(
+                  statusOverrides[deal._id]?.status ?? deal.status,
+                );
                 const effectiveLostReason = statusOverrides[deal._id]?.lostReason ?? deal.lostReason ?? '';
                 const statusTone = getStatusTone(effectiveStatus);
+                const canMarkWon = effectiveStatus !== 'won';
+                const canMarkLost = effectiveStatus !== 'lost';
 
                 return (
-                  <Box
-                    key={deal._id}
-                    sx={{
-                      display: { xs: 'flex', lg: 'grid' },
-                      flexDirection: { xs: 'column', lg: 'unset' },
-                      gridTemplateColumns:
-                        'minmax(180px, 1.7fr) minmax(170px, 1.4fr) minmax(170px, 1.4fr) minmax(150px, 1.3fr) minmax(150px, 1.2fr) minmax(110px, 0.9fr) minmax(130px, 1fr) minmax(120px, 1fr)',
-                      px: { xs: 1.5, sm: 2.5 },
-                      py: { xs: 1.5, sm: 1.75 },
-                      gap: { xs: 1.25, sm: 0 },
-                      alignItems: { lg: 'center' },
-                      borderBottom: index === visibleDeals.length - 1 ? 'none' : `1px solid ${borderColor}`,
-                      borderRadius: { xs: 2, lg: 0 },
-                      backgroundColor: { xs: '#f8fbff', lg: 'transparent' },
-                      border: { xs: `1px solid ${borderColor}`, lg: 'none' },
-                      mb: { xs: 1.25, lg: 0 },
-                      boxShadow: {
-                        xs: '0 6px 20px rgba(15, 23, 42, 0.05)',
-                        lg: 'none',
-                      },
-                      transition: 'background-color .2s ease',
-                      '&:hover': { backgroundColor: { lg: '#f8fbff' } },
-                    }}
-                  >
-                    <Box sx={{ display: { xs: 'flex', lg: 'block' }, justifyContent: { xs: 'space-between', lg: 'flex-start' } }}>
-                      <Typography variant="caption" sx={{ color: mutedText, display: { xs: 'block', lg: 'none' } }}>
-                        Deal Name
-                      </Typography>
+                  <Box key={deal._id}>
+                    <Box
+                      sx={{
+                        display: { xs: 'flex', lg: 'none' },
+                        flexDirection: 'column',
+                        px: { xs: 1.5, sm: 2 },
+                        py: { xs: 1.6, sm: 1.9 },
+                        gap: 1.5,
+                        borderRadius: 3,
+                        border: `1px solid ${borderColor}`,
+                        background:
+                          'linear-gradient(165deg, #ffffff 0%, #f8fbff 50%, #f2f7ff 100%)',
+                        m:'8px',
+                        boxShadow: '0 12px 24px rgba(15, 23, 42, 0.06)',
+                      }}
+                    >
+                      <Stack direction="row" justifyContent="space-between" gap={1.2} alignItems="flex-start">
+                        <Stack spacing={0.2} sx={{ minWidth: 0 }}>
+                          <Typography sx={{ fontSize: 11, color: '#64748b', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                            Deal
+                          </Typography>
+                          <Typography
+                            component={Link}
+                            to={`/deals/${deal._id}`}
+                            sx={{
+                              fontWeight: 800,
+                              color: '#0f172a',
+                              textDecoration: 'none',
+                              fontSize: 18,
+                              lineHeight: 1.2,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              '&:hover': { color: primary },
+                            }}
+                          >
+                            {deal.title}
+                          </Typography>
+                        </Stack>
+                        <Typography
+                          sx={{
+                            fontWeight: 700,
+                            color: statusTone.color,
+                            textTransform: 'capitalize',
+                            fontSize: 12,
+                            px: 1.3,
+                            py: 0.55,
+                            borderRadius: 999,
+                            border: `1px solid ${statusTone.border}`,
+                            backgroundColor: statusTone.bg,
+                            display: 'inline-flex',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {effectiveStatus}
+                        </Typography>
+                      </Stack>
+
+                      <Box
+                        sx={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                          gap: 1.15,
+                        }}
+                      >
+                        <Box>
+                          <Typography sx={{ fontSize: 11, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                            Owner
+                          </Typography>
+                          <Typography sx={{ mt: 0.35, fontWeight: 700, color: '#1f2937', fontSize: 14 }}>
+                            {deal.dealOwner?.name ?? '-'}
+                          </Typography>
+                        </Box>
+                        <Box>
+                          <Typography sx={{ fontSize: 11, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                            Contact
+                          </Typography>
+                          <Typography sx={{ mt: 0.35, fontWeight: 700, color: '#1f2937', fontSize: 14 }}>
+                            {formatContactName(deal.contact)}
+                          </Typography>
+                        </Box>
+                        <Box>
+                          <Typography sx={{ fontSize: 11, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                            Pipeline
+                          </Typography>
+                          <Typography sx={{ mt: 0.35, fontWeight: 700, color: '#1f2937', fontSize: 14 }}>
+                            {deal.pipeline?.name ?? '-'}
+                          </Typography>
+                        </Box>
+                        <Box>
+                          <Typography sx={{ fontSize: 11, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                            Stage
+                          </Typography>
+                          <Typography sx={{ mt: 0.35, fontWeight: 700, color: '#1f2937', fontSize: 14 }}>
+                            {deal.stage?.name ?? '-'}
+                          </Typography>
+                        </Box>
+                      </Box>
+
+                      <Stack
+                        direction="row"
+                        justifyContent="space-between"
+                        alignItems="center"
+                        sx={{
+                          px: 1.25,
+                          py: 1,
+                          borderRadius: 2,
+                          border: `1px solid ${borderColor}`,
+                          backgroundColor: 'rgba(255,255,255,0.85)',
+                        }}
+                      >
+                        <Box>
+                          <Typography sx={{ fontSize: 11, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                            Close Date
+                          </Typography>
+                          <Typography sx={{ mt: 0.15, fontWeight: 800, color: '#0f172a' }}>
+                            {formatCloseDate(deal.expectedCloseDate)}
+                          </Typography>
+                        </Box>
+                        <Stack direction="row" alignItems="center" gap={0.9}>
+                          <CustomTooltip title={canMarkWon ? 'Mark as Won' : 'Already marked as won'} placement="top">
+                            <span>
+                              <CustomIconButton
+                                size="small"
+                                disabled={!canMarkWon}
+                                sx={{
+                                  width: 33,
+                                  height: 33,
+                                  borderRadius: 999,
+                                  border: '1px solid #22c55e',
+                                  backgroundColor: '#f0fdf4',
+                                  '&:hover': { backgroundColor: '#dcfce7' },
+                                }}
+                                onClick={() => handleOpenWonConfirm(deal._id, effectiveStatus)}
+                              >
+                                <CheckCircleOutlined sx={{ fontSize: 16, color: '#16a34a' }} />
+                              </CustomIconButton>
+                            </span>
+                          </CustomTooltip>
+                          <CustomTooltip title={canMarkLost ? 'Mark as Lost' : 'Already marked as lost'} placement="top">
+                            <span>
+                              <CustomIconButton
+                                size="small"
+                                disabled={!canMarkLost}
+                                sx={{
+                                  width: 33,
+                                  height: 33,
+                                  borderRadius: 999,
+                                  border: '1px solid #f87171',
+                                  backgroundColor: '#fef2f2',
+                                  '&:hover': { backgroundColor: '#fee2e2' },
+                                }}
+                                onClick={() => {
+                                  if (!canMarkLost) return;
+                                  setLostDealId(deal._id);
+                                  setLostReason(effectiveLostReason);
+                                  setLostReasonError(null);
+                                }}
+                              >
+                                <CancelOutlined sx={{ fontSize: 16, color: '#ef4444' }} />
+                              </CustomIconButton>
+                            </span>
+                          </CustomTooltip>
+                          <CustomTooltip title="Edit Deal" placement="top">
+                            <CustomIconButton
+                              size="small"
+                              sx={{
+                                width: 33,
+                                height: 33,
+                                borderRadius: 999,
+                                border: '1px solid #cbd5e1',
+                                backgroundColor: '#f8fafc',
+                                '&:hover': { backgroundColor: '#f1f5f9' },
+                              }}
+                              onClick={() => {
+                                setEditingDeal({
+                                  dealId: deal._id,
+                                  pipelineId: deal.pipeline?._id ?? '',
+                                  stageId: deal.stage?._id ?? '',
+                                  title: deal.title,
+                                  amount: deal.amount,
+                                  contactId: deal.contact?._id ?? '',
+                                  expectedCloseDate: deal.expectedCloseDate,
+                                  contactName: formatContactName(deal.contact),
+                                  contactPhotoUrl: null,
+                                });
+                                setIsAddDealOpen(true);
+                              }}
+                            >
+                              <EditOutlined sx={{ fontSize: 16, color: '#64748b' }} />
+                            </CustomIconButton>
+                          </CustomTooltip>
+                          <CustomTooltip title="Delete Deal" placement="top">
+                            <CustomIconButton
+                              size="small"
+                              sx={{
+                                width: 33,
+                                height: 33,
+                                borderRadius: 999,
+                                border: '1px solid #fca5a5',
+                                backgroundColor: '#fff1f2',
+                                '&:hover': { backgroundColor: '#ffe4e6' },
+                              }}
+                              onClick={() => {
+                                setDealToDeleteId(deal._id);
+                                setDeleteError(null);
+                              }}
+                            >
+                              <DeleteOutline sx={{ fontSize: 16, color: '#ef4444' }} />
+                            </CustomIconButton>
+                          </CustomTooltip>
+                        </Stack>
+                      </Stack>
+                    </Box>
+
+                    <Box
+                      sx={{
+                        display: { xs: 'none', lg: 'grid' },
+                        gridTemplateColumns:
+                          'minmax(180px, 1.7fr) minmax(170px, 1.4fr) minmax(170px, 1.4fr) minmax(150px, 1.3fr) minmax(150px, 1.2fr) minmax(110px, 0.9fr) minmax(130px, 1fr) minmax(120px, 1fr)',
+                        px: 2.5,
+                        py: 1.75,
+                        gap: 0,
+                        alignItems: 'center',
+                        borderBottom: index === visibleDeals.length - 1 ? 'none' : `1px solid ${borderColor}`,
+                        transition: 'background-color .2s ease',
+                        '&:hover': { backgroundColor: '#f8fbff' },
+                      }}
+                    >
                       <Typography
                         component={Link}
                         to={`/deals/${deal._id}`}
@@ -585,42 +873,17 @@ const DealsPage = () => {
                       >
                         {deal.title}
                       </Typography>
-                    </Box>
-                    <Box sx={{ display: { xs: 'flex', lg: 'block' }, justifyContent: { xs: 'space-between', lg: 'flex-start' } }}>
-                      <Typography variant="caption" sx={{ color: mutedText, display: { xs: 'block', lg: 'none' } }}>
-                        Deal Owner
-                      </Typography>
                       <Typography sx={{ fontWeight: 600, color: '#1f2937' }}>
                         {deal.dealOwner?.name ?? '-'}
-                      </Typography>
-                    </Box>
-                    <Box sx={{ display: { xs: 'flex', lg: 'block' }, justifyContent: { xs: 'space-between', lg: 'flex-start' } }}>
-                      <Typography variant="caption" sx={{ color: mutedText, display: { xs: 'block', lg: 'none' } }}>
-                        Contact
                       </Typography>
                       <Typography sx={{ fontWeight: 600, color: '#1f2937' }}>
                         {formatContactName(deal.contact)}
                       </Typography>
-                    </Box>
-                    <Box sx={{ display: { xs: 'flex', lg: 'block' }, justifyContent: { xs: 'space-between', lg: 'flex-start' } }}>
-                      <Typography variant="caption" sx={{ color: mutedText, display: { xs: 'block', lg: 'none' } }}>
-                        Pipeline
-                      </Typography>
                       <Typography sx={{ fontWeight: 600, color: '#1f2937' }}>
                         {deal.pipeline?.name ?? '-'}
                       </Typography>
-                    </Box>
-                    <Box sx={{ display: { xs: 'flex', lg: 'block' }, justifyContent: { xs: 'space-between', lg: 'flex-start' } }}>
-                      <Typography variant="caption" sx={{ color: mutedText, display: { xs: 'block', lg: 'none' } }}>
-                        Stage
-                      </Typography>
                       <Typography sx={{ fontWeight: 600, color: '#1f2937' }}>
                         {deal.stage?.name ?? '-'}
-                      </Typography>
-                    </Box>
-                    <Box sx={{ display: { xs: 'flex', lg: 'block' }, justifyContent: { xs: 'space-between', lg: 'flex-start' } }}>
-                      <Typography variant="caption" sx={{ color: mutedText, display: { xs: 'block', lg: 'none' } }}>
-                        Status
                       </Typography>
                       <Typography
                         sx={{
@@ -634,94 +897,115 @@ const DealsPage = () => {
                           border: `1px solid ${statusTone.border}`,
                           backgroundColor: statusTone.bg,
                           display: 'inline-flex',
+                          width: 'fit-content',
                         }}
                       >
                         {effectiveStatus}
                       </Typography>
-                    </Box>
-                    <Box sx={{ display: { xs: 'flex', lg: 'block' }, justifyContent: { xs: 'space-between', lg: 'flex-start' } }}>
-                      <Typography variant="caption" sx={{ color: mutedText, display: { xs: 'block', lg: 'none' } }}>
-                        Close Date
-                      </Typography>
                       <Typography sx={{ fontWeight: 600, color: '#1f2937' }}>
                         {formatCloseDate(deal.expectedCloseDate)}
                       </Typography>
-                    </Box>
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        justifyContent: { xs: 'flex-end', lg: 'center' },
-                        alignItems: 'center',
-                        gap: 1,
-                        flexWrap: 'nowrap',
-                      }}
-                    >
-                      <CustomTooltip title="Mark as Won" placement="top">
-                        <CustomIconButton
-                          size="small"
-                          sx={{
-                            width: 33,
-                            height: 33,
-                            borderRadius: 999,
-                            border: '1px solid #22c55e',
-                            backgroundColor: '#f0fdf4',
-                            '&:hover': { backgroundColor: '#dcfce7' },
-                          }}
-                          onClick={() => handleMarkWon(deal._id)}
-                        >
-                          <CheckCircleOutlined sx={{ fontSize: 16, color: '#16a34a' }} />
-                        </CustomIconButton>
-                      </CustomTooltip>
-                      <CustomTooltip title="Mark as Lost" placement="top">
-                        <CustomIconButton
-                          size="small"
-                          sx={{
-                            width: 33,
-                            height: 33,
-                            borderRadius: 999,
-                            border: '1px solid #f87171',
-                            backgroundColor: '#fef2f2',
-                            '&:hover': { backgroundColor: '#fee2e2' },
-                          }}
-                          onClick={() => {
-                            setLostDealId(deal._id);
-                            setLostReason(effectiveLostReason);
-                          }}
-                        >
-                          <CancelOutlined sx={{ fontSize: 16, color: '#ef4444' }} />
-                        </CustomIconButton>
-                      </CustomTooltip>
-                      <CustomTooltip title="Delete Deal" placement="top">
-                        <CustomIconButton
-                          size="small"
-                          sx={{
-                            width: 33,
-                            height: 33,
-                            borderRadius: 999,
-                            border: '1px solid #fca5a5',
-                            backgroundColor: '#fff1f2',
-                            '&:hover': { backgroundColor: '#ffe4e6' },
-                          }}
-                          onClick={() => setDealToDeleteId(deal._id)}
-                        >
-                          <DeleteOutline sx={{ fontSize: 16, color: '#ef4444' }} />
-                        </CustomIconButton>
-                      </CustomTooltip>
-                      <CustomTooltip title="Edit (coming soon)" placement="top">
-                        <CustomIconButton
-                          size="small"
-                          sx={{
-                            width: 33,
-                            height: 33,
-                            borderRadius: 999,
-                            border: '1px solid #cbd5e1',
-                            backgroundColor: '#f8fafc',
-                            '&:hover': { backgroundColor: '#f1f5f9' },
-                          }}
-                        >
-                          <EditOutlined sx={{ fontSize: 16, color: '#64748b' }} />
-                        </CustomIconButton>
-                      </CustomTooltip>
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          gap: 1,
+                          flexWrap: 'nowrap',
+                        }}
+                      >
+                        <CustomTooltip title={canMarkWon ? 'Mark as Won' : 'Already marked as won'} placement="top">
+                          <span>
+                            <CustomIconButton
+                              size="small"
+                              disabled={!canMarkWon}
+                              sx={{
+                                width: 33,
+                                height: 33,
+                                borderRadius: 999,
+                                border: '1px solid #22c55e',
+                                backgroundColor: '#f0fdf4',
+                                '&:hover': { backgroundColor: '#dcfce7' },
+                              }}
+                              onClick={() => handleOpenWonConfirm(deal._id, effectiveStatus)}
+                            >
+                              <CheckCircleOutlined sx={{ fontSize: 16, color: '#16a34a' }} />
+                            </CustomIconButton>
+                          </span>
+                        </CustomTooltip>
+                        <CustomTooltip title={canMarkLost ? 'Mark as Lost' : 'Already marked as lost'} placement="top">
+                          <span>
+                            <CustomIconButton
+                              size="small"
+                              disabled={!canMarkLost}
+                              sx={{
+                                width: 33,
+                                height: 33,
+                                borderRadius: 999,
+                                border: '1px solid #f87171',
+                                backgroundColor: '#fef2f2',
+                                '&:hover': { backgroundColor: '#fee2e2' },
+                              }}
+                              onClick={() => {
+                                if (!canMarkLost) return;
+                                setLostDealId(deal._id);
+                                setLostReason(effectiveLostReason);
+                                setLostReasonError(null);
+                              }}
+                            >
+                              <CancelOutlined sx={{ fontSize: 16, color: '#ef4444' }} />
+                            </CustomIconButton>
+                          </span>
+                        </CustomTooltip>
+                        <CustomTooltip title="Edit Deal" placement="top">
+                          <CustomIconButton
+                            size="small"
+                            sx={{
+                              width: 33,
+                              height: 33,
+                              borderRadius: 999,
+                              border: '1px solid #cbd5e1',
+                              backgroundColor: '#f8fafc',
+                              '&:hover': { backgroundColor: '#f1f5f9' },
+                            }}
+                            onClick={() => {
+                              setEditingDeal({
+                                dealId: deal._id,
+                                pipelineId: deal.pipeline?._id ?? '',
+                                stageId: deal.stage?._id ?? '',
+                                title: deal.title,
+                                amount: deal.amount,
+                                contactId: deal.contact?._id ?? '',
+                                expectedCloseDate: deal.expectedCloseDate,
+                                contactName: formatContactName(deal.contact),
+                                contactPhotoUrl: null,
+                              });
+                              setIsAddDealOpen(true);
+                            }}
+                          >
+                            <EditOutlined sx={{ fontSize: 16, color: '#64748b' }} />
+                          </CustomIconButton>
+                        </CustomTooltip>
+                        <CustomTooltip title="Delete Deal" placement="top">
+                          <CustomIconButton
+                            size="small"
+                            sx={{
+                              width: 33,
+                              height: 33,
+                              borderRadius: 999,
+                              border: '1px solid #fca5a5',
+                              backgroundColor: '#fff1f2',
+                              '&:hover': { backgroundColor: '#ffe4e6' },
+                            }}
+                            onClick={() => {
+                              setDealToDeleteId(deal._id);
+                              setDeleteError(null);
+                            }}
+                          >
+                            <DeleteOutline sx={{ fontSize: 16, color: '#ef4444' }} />
+                          </CustomIconButton>
+                        </CustomTooltip>
+                      </Box>
                     </Box>
                   </Box>
                 );
@@ -806,11 +1090,15 @@ const DealsPage = () => {
 
       <AddDealModal
         open={isAddDealOpen}
-        onClose={() => setIsAddDealOpen(false)}
+        onClose={() => {
+          setIsAddDealOpen(false);
+          setEditingDeal(null);
+        }}
         onSave={() => {
           setIsAddDealOpen(false);
-          void refetch();
+          setEditingDeal(null);
         }}
+        initialDeal={editingDeal}
       />
 
       <MarkLostDealModal
@@ -820,14 +1108,45 @@ const DealsPage = () => {
         onClose={() => {
           setLostDealId(null);
           setLostReason('');
+          setLostReasonError(null);
         }}
         onSubmit={handleConfirmLost}
+        submitDisabled={markingDealLost}
+        errorMessage={lostReasonError ?? markDealLostErrorMessage}
       />
 
-      <DeleteDealModal
+      <ConfirmationAlertModal
+        open={Boolean(wonDealId)}
+        variant="warning"
+        title="Mark Deal as Won?"
+        message={wonError ?? markDealWonErrorMessage ?? 'Do you want to mark this deal as won?'}
+        confirmText="Mark Won"
+        cancelText="Cancel"
+        isConfirmLoading={markingDealWon}
+        onClose={() => {
+          setWonDealId(null);
+          setWonError(null);
+        }}
+        onConfirm={handleConfirmWon}
+      />
+
+      <ConfirmationAlertModal
         open={Boolean(dealToDeleteId)}
-        onClose={() => setDealToDeleteId(null)}
-        onSubmit={handleConfirmDelete}
+        variant="delete"
+        title="Delete deal?"
+        message={
+          deleteError
+          ?? deleteDealErrorMessage
+          ?? 'This action cannot be undone. Do you want to continue?'
+        }
+        confirmText="Delete"
+        cancelText="Cancel"
+        isConfirmLoading={deletingDeal}
+        onClose={() => {
+          setDealToDeleteId(null);
+          setDeleteError(null);
+        }}
+        onConfirm={handleConfirmDelete}
       />
 
       <PipelineModal

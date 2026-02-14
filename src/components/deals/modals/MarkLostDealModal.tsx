@@ -9,6 +9,8 @@ type MarkLostDealModalProps = {
   onLostReasonChange: (value: string) => void;
   onClose: () => void;
   onSubmit: () => void;
+  submitDisabled?: boolean;
+  errorMessage?: string | null;
 };
 
 const MarkLostDealModal = ({
@@ -17,11 +19,14 @@ const MarkLostDealModal = ({
   onLostReasonChange,
   onClose,
   onSubmit,
+  submitDisabled = false,
+  errorMessage = null,
 }: MarkLostDealModalProps) => (
   <CustomModal
     open={open}
     handleClose={onClose}
     handleSubmit={onSubmit}
+    submitDisabled={submitDisabled}
     title="Mark Deal as Lost"
     description="Tell us why this deal was lost."
     submitButtonText="Save Reason"
@@ -40,6 +45,9 @@ const MarkLostDealModal = ({
         onChange={(event) => onLostReasonChange(event.target.value)}
         sx={{ alignItems: 'flex-start', py: 1 }}
       />
+      {errorMessage ? (
+        <Typography sx={{ fontSize: 13, color: '#dc2626' }}>{errorMessage}</Typography>
+      ) : null}
     </Stack>
   </CustomModal>
 );

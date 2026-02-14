@@ -6,7 +6,6 @@ import { CloseOutlined } from '@mui/icons-material';
 import { CustomButton } from '../../../common/CustomButton';
 import BasicInput from '../../../common/BasicInput';
 import BasicSelect from '../../../common/BasicSelect';
-import type { DealDetail } from '../../../data/deals';
 import type { Pipeline } from '../../../data/pipelines';
 import {
   borderColor,
@@ -21,7 +20,7 @@ import {
   usePipelinesOptionsQuery,
   usePipelineStagesQuery,
 } from '../../../hooks/pipelines/usePipelinesQueries';
-import { useCreateDealMutation } from '../../../hooks/deals/useDealsMutations';
+import { useCreateDealMutation, useUpdateDealMutation } from '../../../hooks/deals/useDealsMutations';
 import { useAppSelector } from '../../../app/hooks';
 import { validateCreateDealPayload } from './addDealValidation';
 
@@ -35,12 +34,24 @@ export type AddDealPayload = {
   expectedCloseDate: string | null;
 };
 
+export type AddDealInitialData = {
+  dealId: string;
+  pipelineId: string;
+  stageId: string;
+  title: string;
+  amount: number | null;
+  contactId: string;
+  expectedCloseDate: string | null;
+  contactName?: string;
+  contactPhotoUrl?: string | null;
+};
+
 interface AddDealModalProps {
   open: boolean;
   onClose: () => void;
   onSave?: (payload: AddDealPayload) => void;
   pipelines?: Pipeline[];
-  initialDeal?: DealDetail | null;
+  initialDeal?: AddDealInitialData | null;
 }
 
 const getDefaultCloseDateInput = () => {
@@ -59,6 +70,8 @@ const AddDealModal = ({
   const authUser = useAppSelector((state) => state.auth.user);
   const reduxPipelines = useAppSelector((state) => state.pipelines.options);
   const { createDeal, loading: creatingDeal, errorMessage: createDealErrorMessage } = useCreateDealMutation();
+  const { updateDeal, loading: updatingDeal, errorMessage: updateDealErrorMessage } = useUpdateDealMutation();
+  const isEditMode = Boolean(initialDeal?.dealId);
   const shouldLoadPipelinesFromApi = open && reduxPipelines.length === 0;
   const { pipelines: apiPipelines, loading: loadingPipelines } = usePipelinesOptionsQuery(
     shouldLoadPipelinesFromApi,
@@ -73,15 +86,17 @@ const AddDealModal = ({
     ownerId: '',
     pipelineId: initialPipelineId,
     stageId: initialStageId,
-    title: initialDeal?.name ?? '',
-    amount: Number((initialDeal?.price ?? '').replace(/[^\d.]/g, '')) || null,
-    contactId: '',
+    title: initialDeal?.title ?? '',
+    amount: initialDeal?.amount ?? null,
+    contactId: initialDeal?.contactId ?? '',
     expectedCloseDate: null,
   });
   const [amountInput, setAmountInput] = useState(
-    initialDeal?.price ? String(Number((initialDeal.price ?? '').replace(/[^\d.]/g, '')) || '') : '',
+    typeof initialDeal?.amount === 'number' ? String(initialDeal.amount) : '',
   );
-  const [expectedCloseDateInput, setExpectedCloseDateInput] = useState(getDefaultCloseDateInput);
+  const [expectedCloseDateInput, setExpectedCloseDateInput] = useState(
+    initialDeal?.expectedCloseDate ? initialDeal.expectedCloseDate.slice(0, 10) : getDefaultCloseDateInput,
+  );
   const [validationError, setValidationError] = useState<string | null>(null);
   const {
     stages: apiStages,
@@ -125,16 +140,24 @@ const AddDealModal = ({
     setFormState((prev) => ({
       ...prev,
       ownerId: authUser?._id ?? '',
-      pipelineId: initialDeal.pipelineId ?? '',
-      stageId: initialDeal.stageId ?? '',
-      title: initialDeal.name ?? '',
-      amount: Number((initialDeal.price ?? '').replace(/[^\d.]/g, '')) || null,
+      pipelineId: initialDeal.pipelineId,
+      stageId: initialDeal.stageId,
+      title: initialDeal.title,
+      amount: initialDeal.amount,
+      contactId: initialDeal.contactId,
       expectedCloseDate: null,
     }));
-    setAmountInput(String(Number((initialDeal.price ?? '').replace(/[^\d.]/g, '')) || ''));
-    setExpectedCloseDateInput(getDefaultCloseDateInput());
+    setAmountInput(typeof initialDeal.amount === 'number' ? String(initialDeal.amount) : '');
+    setExpectedCloseDateInput(
+      initialDeal.expectedCloseDate ? initialDeal.expectedCloseDate.slice(0, 10) : getDefaultCloseDateInput(),
+    );
+    setSelectedContact({
+      _id: initialDeal.contactId,
+      name: initialDeal.contactName?.trim() || 'Selected Contact',
+      photoUrl: initialDeal.contactPhotoUrl ?? null,
+    });
     setValidationError(null);
-  }, [initialDeal, pipelines, authUser?._id]);
+  }, [initialDeal, authUser?._id]);
 
   useEffect(() => {
     if (!open || initialDeal) return;
@@ -151,6 +174,7 @@ const AddDealModal = ({
 
   const submitDisabled =
     creatingDeal ||
+    updatingDeal ||
     !formState.pipelineId.trim() ||
     !formState.stageId.trim() ||
     !formState.title.trim() ||
@@ -165,7 +189,7 @@ const AddDealModal = ({
       amount: amountInput,
       contactId: formState.contactId,
       expectedCloseDate: expectedCloseDateInput,
-    });
+    }, { requireOwner: !isEditMode });
 
     if (!validation.success) {
       setValidationError(validation.message);
@@ -173,7 +197,15 @@ const AddDealModal = ({
     }
     setValidationError(null);
 
-    if (initialDeal) {
+    if (isEditMode && initialDeal?.dealId) {
+      await updateDeal(initialDeal.dealId, {
+        pipelineId: validation.payload.pipelineId,
+        stageId: validation.payload.stageId,
+        title: validation.payload.title,
+        amount: validation.payload.amount,
+        contactId: validation.payload.contactId,
+        expectedCloseDate: validation.payload.expectedCloseDate,
+      });
       onSave?.(validation.payload);
       return;
     }
@@ -216,7 +248,7 @@ const AddDealModal = ({
           }}
         >
           <Typography id="add-deal-title" sx={{ fontWeight: 800, color: '#0f172a' }}>
-            {initialDeal ? 'Edit Deal' : 'Add New Deal'}
+            {isEditMode ? 'Edit Deal' : 'Add New Deal'}
           </Typography>
           <IconButton
             size="small"
@@ -446,8 +478,9 @@ const AddDealModal = ({
               }}
             >
               {creatingDeal
+                || updatingDeal
                 ? 'Saving...'
-                : initialDeal
+                : isEditMode
                   ? 'Save Changes'
                   : 'Save Deal'}
             </CustomButton>
@@ -457,9 +490,9 @@ const AddDealModal = ({
               {validationError}
             </Typography>
           ) : null}
-          {createDealErrorMessage && !validationError ? (
+          {(createDealErrorMessage || updateDealErrorMessage) && !validationError ? (
             <Typography sx={{ color: '#dc2626', fontSize: 13, mt: 1 }}>
-              {createDealErrorMessage}
+              {createDealErrorMessage ?? updateDealErrorMessage}
             </Typography>
           ) : null}
         </Box>

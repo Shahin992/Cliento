@@ -22,11 +22,36 @@ type ValidationError = {
 
 export type AddDealValidationResult = ValidationSuccess | ValidationError;
 
+const parseDateInputToUtcEndOfDay = (value: string): string | null => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
+    return null;
+  }
+
+  const utcDate = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 0));
+  if (
+    utcDate.getUTCFullYear() !== year ||
+    utcDate.getUTCMonth() !== month - 1 ||
+    utcDate.getUTCDate() !== day
+  ) {
+    return null;
+  }
+
+  return utcDate.toISOString();
+};
+
 export const validateCreateDealPayload = (
   form: AddDealFormValues,
+  options?: { requireOwner?: boolean },
 ): AddDealValidationResult => {
+  const requireOwner = options?.requireOwner ?? true;
   const ownerId = form.ownerId.trim();
-  if (!ownerId.length) {
+  if (requireOwner && !ownerId.length) {
     return { success: false, message: 'Owner is required.' };
   }
 
@@ -69,11 +94,11 @@ export const validateCreateDealPayload = (
   let expectedCloseDate: string | null = null;
   const normalizedDate = form.expectedCloseDate.trim();
   if (normalizedDate.length) {
-    const date = new Date(`${normalizedDate}T23:59:59.000Z`);
-    if (Number.isNaN(date.getTime())) {
+    const parsedDate = parseDateInputToUtcEndOfDay(normalizedDate);
+    if (!parsedDate) {
       return { success: false, message: 'Expected close date is invalid.' };
     }
-    expectedCloseDate = date.toISOString();
+    expectedCloseDate = parsedDate;
   }
 
   return {

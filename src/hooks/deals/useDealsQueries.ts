@@ -3,6 +3,7 @@ import { useAppQuery } from '../useAppQuery';
 type DealPipeline = {
   _id: string;
   name: string;
+  isDefault?: boolean;
 };
 
 type DealStage = {
@@ -18,6 +19,8 @@ type DealContact = {
   firstName?: string;
   lastName?: string;
   companyName?: string;
+  emails?: string[];
+  phones?: string[];
 };
 
 type DealOwner = {
@@ -62,6 +65,27 @@ type DealsResponse = {
   pagination: DealsPagination;
 };
 
+export type DealDetailsItem = {
+  _id: string;
+  title: string;
+  amount: number | null;
+  expectedCloseDate: string | null;
+  status: string;
+  wonAt?: string | null;
+  lostAt?: string | null;
+  lostReason?: string | null;
+  createdBy: string;
+  updatedBy: string;
+  deletedAt?: string | null;
+  deletedBy?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  dealOwner?: DealOwner;
+  pipeline?: DealPipeline;
+  stage?: DealStage;
+  contact?: DealContact;
+};
+
 export const dealsQueryKeys = {
   all: ['deals'] as const,
   list: (page: number, limit: number, search?: string, pipelineId?: string, status?: string) =>
@@ -76,6 +100,7 @@ export const dealsQueryKeys = {
         status: (status ?? '').trim(),
       },
     ] as const,
+  detail: (dealId: string) => ['deals', 'detail', dealId] as const,
 };
 
 export const useDealsQuery = (
@@ -106,6 +131,26 @@ export const useDealsQuery = (
     ...query,
     deals: query.data?.deals ?? [],
     pagination: query.data?.pagination,
+    loading: query.isLoading,
+    hasError: query.isError,
+    errorMessage: query.error?.message ?? null,
+  };
+};
+
+export const useDealDetailsQuery = (dealId?: string) => {
+  const normalizedDealId = (dealId ?? '').trim();
+  const query = useAppQuery<DealDetailsItem>({
+    queryKey: dealsQueryKeys.detail(normalizedDealId),
+    request: {
+      method: 'GET',
+      url: `/api/deals/${normalizedDealId}`,
+    },
+    enabled: Boolean(normalizedDealId),
+  });
+
+  return {
+    ...query,
+    deal: query.data,
     loading: query.isLoading,
     hasError: query.isError,
     errorMessage: query.error?.message ?? null,
