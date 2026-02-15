@@ -1,3 +1,4 @@
+import { keepPreviousData } from '@tanstack/react-query';
 import { useAppQuery } from '../useAppQuery';
 
 type DealPipeline = {
@@ -100,6 +101,18 @@ export const dealsQueryKeys = {
         status: (status ?? '').trim(),
       },
     ] as const,
+  contactList: (contactId: string, page: number, limit: number, search?: string, status?: string) =>
+    [
+      'deals',
+      'contact-list',
+      {
+        contactId: (contactId ?? '').trim(),
+        page,
+        limit,
+        search: (search ?? '').trim(),
+        status: (status ?? '').trim(),
+      },
+    ] as const,
   detail: (dealId: string) => ['deals', 'detail', dealId] as const,
 };
 
@@ -151,6 +164,48 @@ export const useDealDetailsQuery = (dealId?: string) => {
   return {
     ...query,
     deal: query.data,
+    loading: query.isLoading,
+    hasError: query.isError,
+    errorMessage: query.error?.message ?? null,
+  };
+};
+
+export const useContactDealsQuery = (
+  contactId?: string,
+  page = 1,
+  limit = 50,
+  search?: string | null,
+  status?: string,
+) => {
+  const normalizedContactId = (contactId ?? '').trim();
+  const normalizedStatus = (status ?? '').trim();
+  const normalizedSearch = (search ?? '').trim();
+  const query = useAppQuery<DealsResponse>({
+    queryKey: dealsQueryKeys.contactList(
+      normalizedContactId,
+      page,
+      limit,
+      normalizedSearch,
+      normalizedStatus,
+    ),
+    request: {
+      method: 'GET',
+      url: `/api/deals/contact/${normalizedContactId}`,
+      params: {
+        page,
+        limit,
+        search: normalizedSearch || null,
+        ...(normalizedStatus ? { status: normalizedStatus } : {}),
+      },
+    },
+    enabled: Boolean(normalizedContactId),
+    placeholderData: keepPreviousData,
+  });
+
+  return {
+    ...query,
+    deals: query.data?.deals ?? [],
+    pagination: query.data?.pagination,
     loading: query.isLoading,
     hasError: query.isError,
     errorMessage: query.error?.message ?? null,

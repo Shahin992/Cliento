@@ -26,9 +26,9 @@ import {
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import AddContactModal from '../components/contacts/modals/AddContactModal';
+import ContactDealsSection from '../components/contacts/details/ContactDealsSection';
 import ConfirmationAlertModal from '../common/ConfirmationAlertModal';
 import { useToast } from '../common/ToastProvider';
-import { deals } from '../data/deals';
 import { type ContactDetails } from '../hooks/contacts/contactTypes';
 import { useContactByIdQuery } from '../hooks/contacts/useContactsQueries';
 import { useDeleteContactMutation } from '../hooks/contacts/useContactsMutations';
@@ -37,17 +37,20 @@ const borderColor = '#e6eaf1';
 const mutedText = '#7e8796';
 const primary = '#6d28ff';
 
-const tabs = ['Deals', 
-  // 'Email', 'Notes'
+type ContactTabKey = 'deals' | 'inbox' | 'tasks';
+
+const contactTabs: Array<{ key: ContactTabKey; label: string; enabled: boolean }> = [
+  { key: 'deals', label: 'Deals', enabled: true },
+  { key: 'inbox', label: 'Inbox', enabled: false },
+  { key: 'tasks', label: 'Tasks', enabled: false },
 ];
+
 const detailLabelSx = { color: mutedText, fontSize: 13, minWidth: { xs: 'auto', lg: 104 }, flexShrink: 0 };
 const detailValueContainerSx = {
   flex: { xs: '0 1 auto', lg: 1 },
   minWidth: 0,
   textAlign: { xs: 'right', lg: 'left' },
 };
-
-const normalize = (value?: string | null) => (value || '').trim().toLowerCase();
 
 const formatDateTime = (value?: string | null) => {
   if (!value) return '-';
@@ -89,7 +92,9 @@ const ContactDetailsSkeleton = () => (
 const ContactDetailsPage = () => {
   const navigate = useNavigate();
   const { contactId } = useParams();
-  const [activeTab, setActiveTab] = useState('Deals');
+  const [activeTab, setActiveTab] = useState<ContactTabKey>('deals');
+  const [dealStatusFilter, setDealStatusFilter] = useState<'open' | 'won' | 'lost'>('open');
+  const [associatedDealsCount, setAssociatedDealsCount] = useState(0);
   const [actionsMenuAnchorEl, setActionsMenuAnchorEl] = useState<HTMLElement | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
@@ -154,25 +159,6 @@ const ContactDetailsPage = () => {
     const first = contact.firstName?.trim()?.[0] ?? '';
     const last = contact.lastName?.trim()?.[0] ?? '';
     return `${first}${last}`.toUpperCase() || 'C';
-  }, [contact]);
-
-  const associatedDeals = useMemo(() => {
-    if (!contact) return [];
-
-    const fullNameKey = normalize([contact.firstName, contact.lastName].filter(Boolean).join(' '));
-    const emailKey = normalize(contact.emails?.[0]);
-    const phoneKey = normalize(contact.phones?.[0]);
-
-    return deals.filter((deal) => {
-      const dealContact = normalize(deal.customer);
-      const dealEmail = normalize(deal.email);
-      const dealPhone = normalize(deal.phone);
-      return (
-        (emailKey && dealEmail === emailKey) ||
-        (phoneKey && dealPhone === phoneKey) ||
-        (fullNameKey && dealContact === fullNameKey)
-      );
-    });
   }, [contact]);
 
   const emailCount = contact?.emails?.length ?? 0;
@@ -347,21 +333,21 @@ const ContactDetailsPage = () => {
 
           <Box sx={{ px: { xs: 1.5, sm: 2.5 }, borderBottom: `1px solid ${borderColor}` }}>
             <Stack direction="row" spacing={2.25} sx={{ overflowX: 'auto', py: 1.2 }}>
-              {tabs.map((tab) => (
+              {contactTabs.filter((tab) => tab.enabled).map((tab) => (
                 <Typography
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
                   sx={{
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',
                     fontSize: 13,
-                    fontWeight: activeTab === tab ? 700 : 500,
-                    color: activeTab === tab ? '#111827' : mutedText,
-                    borderBottom: activeTab === tab ? `2px solid ${primary}` : '2px solid transparent',
+                    fontWeight: activeTab === tab.key ? 700 : 500,
+                    color: activeTab === tab.key ? '#111827' : mutedText,
+                    borderBottom: activeTab === tab.key ? `2px solid ${primary}` : '2px solid transparent',
                     pb: 0.8,
                   }}
                 >
-                  {tab}
+                  {tab.label}
                 </Typography>
               ))}
             </Stack>
@@ -379,65 +365,21 @@ const ContactDetailsPage = () => {
             }}
           >
             <Box sx={{ p: { xs: 1.5, sm: 2 }, borderRight: { xs: 'none', lg: `1px solid ${borderColor}` } }}>
-              {activeTab === 'Deals' ? (
-                <Stack spacing={1.5}>
-                  <Typography sx={{ fontSize: 12, color: mutedText, fontWeight: 700 }}>TODAY</Typography>
-
-                  {associatedDeals.length === 0 ? (
-                    <Box sx={{ border: `1px solid ${borderColor}`, borderRadius: 2, p: 2 }}>
-                      <Typography sx={{ color: '#111827', fontWeight: 700, mb: 0.5 }}>No activity yet</Typography>
-                      <Typography sx={{ color: mutedText, fontSize: 13 }}>
-                        This contact has no associated deal activity at the moment.
-                      </Typography>
-                    </Box>
-                  ) : (
-                    <>
-                      <Stack direction="row" spacing={1.2} alignItems="flex-start">
-                        <Avatar src={contact.photoUrl || undefined} sx={{ width: 28, height: 28, fontSize: 12 }}>
-                          {initials}
-                        </Avatar>
-                        <Box>
-                          <Typography sx={{ color: '#111827', fontWeight: 700, fontSize: 14 }}>
-                            {fullName} <Typography component="span" sx={{ color: mutedText, fontSize: 12 }}>{formatDateTime(contact.updatedAt)}</Typography>
-                          </Typography>
-                          <Typography sx={{ color: mutedText, fontSize: 13 }}>Viewed {associatedDeals.length} associated deals</Typography>
-                        </Box>
-                      </Stack>
-
-                      {associatedDeals.slice(0, 5).map((deal) => (
-                        <Box key={deal.id} sx={{ border: `1px solid ${borderColor}`, borderRadius: 2, p: 1.25 }}>
-                          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.2}>
-                            <Box
-                              sx={{
-                                width: 58,
-                                height: 48,
-                                borderRadius: 1.5,
-                                background: 'linear-gradient(135deg, #dbeafe, #f5f3ff)',
-                                border: `1px solid ${borderColor}`,
-                              }}
-                            />
-                            <Box sx={{ minWidth: 0, flex: 1 }}>
-                              <Typography component={Link} to={`/deals/${deal.id}`} sx={{ color: '#111827', textDecoration: 'none', fontWeight: 700 }}>
-                                {deal.price}
-                              </Typography>
-                              <Typography sx={{ color: '#111827', fontSize: 13 }}>
-                                {deal.area} • {deal.appointment}
-                              </Typography>
-                              <Typography sx={{ color: mutedText, fontSize: 12 }} noWrap>
-                                {deal.location}
-                              </Typography>
-                            </Box>
-                          </Stack>
-                        </Box>
-                      ))}
-                    </>
-                  )}
-                </Stack>
+              {activeTab === 'deals' ? (
+                <ContactDealsSection
+                  contact={contact}
+                  contactId={contactId}
+                  dealStatusFilter={dealStatusFilter}
+                  onDealStatusFilterChange={setDealStatusFilter}
+                  onDealsCountChange={setAssociatedDealsCount}
+                />
               ) : (
                 <Box sx={{ border: `1px dashed ${borderColor}`, borderRadius: 2, p: 2.5 }}>
-                  <Typography sx={{ fontWeight: 700, color: '#111827' }}>{activeTab}</Typography>
+                  <Typography sx={{ fontWeight: 700, color: '#111827', textTransform: 'capitalize' }}>
+                    {activeTab}
+                  </Typography>
                   <Typography sx={{ color: mutedText, mt: 0.75 }}>
-                    Content for {activeTab.toLowerCase()} can be added here.
+                    Content for {activeTab} can be added here.
                   </Typography>
                 </Box>
               )}
@@ -565,7 +507,7 @@ const ContactDetailsPage = () => {
                       >
                         <SellOutlined sx={{ fontSize: 14, color: '#111827' }} />
                         <Typography sx={{ color: '#111827', fontSize: 13, fontWeight: 600 }}>
-                          {associatedDeals.length} active {associatedDeals.length === 1 ? 'deal' : 'deals'}
+                          {associatedDealsCount} {dealStatusFilter} {associatedDealsCount === 1 ? 'deal' : 'deals'}
                         </Typography>
                       </Stack>
                     </Stack>
