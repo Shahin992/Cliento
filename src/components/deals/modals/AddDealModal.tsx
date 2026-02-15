@@ -6,7 +6,6 @@ import { CloseOutlined } from '@mui/icons-material';
 import { CustomButton } from '../../../common/CustomButton';
 import BasicInput from '../../../common/BasicInput';
 import BasicSelect from '../../../common/BasicSelect';
-import type { Pipeline } from '../../../data/pipelines';
 import {
   borderColor,
   labelSx,
@@ -50,7 +49,6 @@ interface AddDealModalProps {
   open: boolean;
   onClose: () => void;
   onSave?: (payload: AddDealPayload) => void;
-  pipelines?: Pipeline[];
   initialDeal?: AddDealInitialData | null;
 }
 
@@ -64,7 +62,6 @@ const AddDealModal = ({
   open,
   onClose,
   onSave,
-  pipelines = [],
   initialDeal = null,
 }: AddDealModalProps) => {
   const authUser = useAppSelector((state) => state.auth.user);
@@ -119,12 +116,9 @@ const AddDealModal = ({
         }));
       }
 
-      return pipelines.map((pipeline) => ({
-        label: pipeline.name,
-        value: pipeline.id,
-      }));
+      return [];
     },
-    [reduxPipelines, apiPipelines, pipelines],
+    [reduxPipelines, apiPipelines],
   );
   const stageOptions = useMemo(
     () =>

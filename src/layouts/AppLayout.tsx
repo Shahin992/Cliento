@@ -15,7 +15,6 @@ import Topbar from './Topbar';
 import PwaInstallButton from '../components/PwaInstallButton';
 import AddDealModal from '../components/deals/modals/AddDealModal';
 import AddContactModal from '../components/contacts/modals/AddContactModal';
-import { pipelines as seedPipelines } from '../data/pipelines';
 
 const drawerWidth = 240;
 const collapsedWidth = 80;
@@ -100,7 +99,6 @@ const AppLayout = () => {
      {isAddDealOpen && ( 
       <AddDealModal
         open={isAddDealOpen}
-        pipelines={seedPipelines}
         onClose={() => setIsAddDealOpen(false)}
         onSave={handleTopbarDealSave}
       />
