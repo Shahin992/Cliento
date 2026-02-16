@@ -3,7 +3,7 @@ import {
   Box,
   Chip,
   FormControlLabel,
-  InputAdornment,
+  useMediaQuery,
   MenuItem,
   Modal,
   Pagination,
@@ -19,12 +19,10 @@ import {
   AltRouteOutlined,
   DeleteOutlineOutlined,
   EditOutlined,
-  SearchOutlined,
   StarOutline,
 } from '@mui/icons-material';
 
 import PageHeader from '../components/PageHeader';
-import BasicInput from '../common/BasicInput';
 import { CustomButton } from '../common/CustomButton';
 import { CustomIconButton } from '../common/CustomIconButton';
 import { useToast } from '../common/ToastProvider';
@@ -37,6 +35,8 @@ import {
   useDeletePipelineMutation,
 } from '../hooks/pipelines/usePipelinesMutations';
 import PipelineModal from '../components/deals/modals/PipelineModal';
+import PipelinesHeaderActions from '../components/pipelines/page/PipelinesHeaderActions';
+import PipelinesFiltersPopover from '../components/pipelines/page/PipelinesFiltersPopover';
 
 const borderColor = '#dbe4f0';
 const mutedText = '#64748b';
@@ -123,6 +123,8 @@ const PipelinesManagementPage = () => {
   const [deleteDealAction, setDeleteDealAction] = useState<'move' | 'delete' | ''>('');
   const [targetPipelineId, setTargetPipelineId] = useState('');
   const [deleteValidationError, setDeleteValidationError] = useState<string | null>(null);
+  const [filterAnchorEl, setFilterAnchorEl] = useState<HTMLElement | null>(null);
+  const useFilterPopover = useMediaQuery('(max-width:1039.95px)');
 
   const { showToast } = useToast();
   const { deletePipeline, loading: isDeletingPipeline } = useDeletePipelineMutation();
@@ -169,6 +171,7 @@ const PipelinesManagementPage = () => {
       : Math.min((page - 1) * serverLimit + pipelines.length, totalPipelines);
 
   const rows = useMemo(() => pipelines, [pipelines]);
+  const isFilterPopoverOpen = Boolean(filterAnchorEl);
   const defaultCount = useMemo(() => rows.filter((item) => item.isDefault).length, [rows]);
   const customCount = Math.max(0, rows.length - defaultCount);
   const availableTargetPipelines = useMemo(() => {
@@ -176,6 +179,12 @@ const PipelinesManagementPage = () => {
     if (!selectedId) return [];
     return allPipelines.filter((pipeline) => pipeline._id !== selectedId);
   }, [allPipelines, pipelineToDelete?._id]);
+
+  useEffect(() => {
+    if (!useFilterPopover) {
+      setFilterAnchorEl(null);
+    }
+  }, [useFilterPopover]);
 
   useEffect(() => {
     if (!pipelineToDelete) {
@@ -259,49 +268,39 @@ const PipelinesManagementPage = () => {
         title="Pipeline Management"
         subtitle="Create, tune, and maintain pipelines with default controls"
         stackOnMobile={false}
+        titleSx={{
+          fontSize: { xs: '1.1rem', sm: '1.45rem', md: '1.9rem' },
+          lineHeight: 1.15,
+          letterSpacing: '-0.01em',
+          wordBreak: 'break-word',
+        }}
+        subtitleSx={{
+          fontSize: { xs: '0.74rem', sm: '0.82rem' },
+          lineHeight: 1.35,
+          maxWidth: { xs: 260, sm: 420 },
+        }}
         action={
-          <Stack
-            direction={{ xs: 'column', sm: 'row' }}
-            spacing={1}
-            alignItems="center"
-            sx={{ width: { xs: '100%', sm: 'auto' } }}
-          >
-            <BasicInput
-              fullWidth
-              placeholder="Search pipelines"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              minWidth={220}
-              sx={{
-                height: 40,
-                borderRadius: 999,
-                borderColor: '#c8d6ea',
-                minWidth: { sm: 230, md: 280 },
-                width: { xs: '100%', sm: 'auto' },
-              }}
-              startAdornment={
-                <InputAdornment position="start">
-                  <SearchOutlined sx={{ color: mutedText, fontSize: 20 }} />
-                </InputAdornment>
-              }
-            />
-            <CustomButton
-              variant="contained"
-              sx={{
-                borderRadius: 999,
-                px: 2.6,
-                textTransform: 'none',
-                minWidth: { xs: '100%', sm: 144 },
-                whiteSpace: 'nowrap',
-                backgroundColor: primary,
-                '&:hover': { backgroundColor: '#1d4ed8' },
-              }}
-              onClick={() => setIsCreatePipelineOpen(true)}
-            >
-              Add Pipeline
-            </CustomButton>
-          </Stack>
+          <PipelinesHeaderActions
+            useFilterPopover={useFilterPopover}
+            borderColor={borderColor}
+            mutedText={mutedText}
+            primary={primary}
+            searchQuery={searchQuery}
+            onSearchChange={(value) => setSearchQuery(value)}
+            onOpenFilter={(event) => setFilterAnchorEl(event.currentTarget)}
+            onOpenCreate={() => setIsCreatePipelineOpen(true)}
+          />
         }
+      />
+      <PipelinesFiltersPopover
+        useFilterPopover={useFilterPopover}
+        open={isFilterPopoverOpen}
+        anchorEl={filterAnchorEl}
+        borderColor={borderColor}
+        searchQuery={searchQuery}
+        onSearchChange={(value) => setSearchQuery(value)}
+        onClearFilters={() => setSearchQuery('')}
+        onClose={() => setFilterAnchorEl(null)}
       />
 
       <Box sx={{ ...cardSx, p: { xs: 1.25, sm: 1.5 } }}>
@@ -322,7 +321,14 @@ const PipelinesManagementPage = () => {
           flex: 1,
         }}
       >
-        <Box sx={{ p: { xs: 1.25, sm: 1.5 }, flex: 1, minHeight: 0, overflowY: 'auto' }}>
+        <Box
+          sx={{
+            p: { xs: 1.25, sm: 1.5 },
+            flex: 1,
+            minHeight: 0,
+            overflowY: loading ? 'hidden' : 'auto',
+          }}
+        >
           {loading ? (
             <Box
               sx={{
@@ -453,6 +459,18 @@ const PipelinesManagementPage = () => {
                                 borderRadius: 999,
                                 border: '1px solid #fecaca',
                                 backgroundColor: '#fff1f2',
+                                '&:hover': {
+                                  backgroundColor: '#ffe4e6',
+                                  borderColor: '#fecaca',
+                                  color: '#ef4444',
+                                },
+                                '&:focus, &:focus-visible, &.Mui-focusVisible': {
+                                  backgroundColor: '#ffe4e6',
+                                  borderColor: '#fecaca',
+                                  color: '#ef4444',
+                                  boxShadow: 'none',
+                                  outline: 'none',
+                                },
                               }}
                               onClick={() => setPipelineToDelete(pipeline)}
                             >

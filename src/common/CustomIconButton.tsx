@@ -13,6 +13,11 @@ export const CustomIconButton = styled(IconButton, {
   '&:hover, &:focus, &:focus-visible': {
     backgroundColor: 'transparent !important',
     outline: 'none',
+    boxShadow: 'none',
+  },
+  '&.Mui-focusVisible': {
+    outline: 'none',
+    boxShadow: 'none',
   },
   '&.Mui-disabled': {
     color: `rgba(0, 0, 0, 0.26) !important`,

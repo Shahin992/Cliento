@@ -1,6 +1,7 @@
 import { Box, Stack, Typography } from '@mui/material';
 import { CustomIconButton as IconButton } from '../../../common/CustomIconButton';
 import { DeleteOutline, EditOutlined } from '@mui/icons-material';
+import CustomTooltip from '../../../common/CustomTooltip';
 
 interface DealSummaryCardProps {
   address: string;
@@ -21,21 +22,33 @@ const DealSummaryCard = ({ address }: DealSummaryCardProps) => (
         {address}
       </Typography>
       <Stack direction="row" spacing={1}>
-        <IconButton
-          size="small"
-          customColor="#ef4444"
-          sx={{
-            width: 32,
-            height: 32,
-            borderRadius: '50%',
-            border: '1px solid #e7edf6',
-            backgroundColor: 'white',
-            color: '#ef4444',
-            '& .MuiSvgIcon-root': { color: '#ef4444' },
-          }}
-        >
-          <DeleteOutline sx={{ fontSize: 16 }} />
-        </IconButton>
+        <CustomTooltip title="Delete Deal" placement="top">
+          <IconButton
+            size="small"
+            customColor="#ef4444"
+            sx={{
+              width: 32,
+              height: 32,
+              borderRadius: '50%',
+              border: '1px solid #fca5a5',
+              backgroundColor: '#fff1f2',
+              color: '#ef4444',
+              '& .MuiSvgIcon-root': { color: '#ef4444' },
+              '&:hover': {
+                backgroundColor: '#ffe4e6',
+                borderColor: '#fca5a5',
+              },
+              '&:focus, &:focus-visible, &.Mui-focusVisible': {
+                backgroundColor: '#ffe4e6',
+                borderColor: '#fca5a5',
+                boxShadow: 'none',
+                outline: 'none',
+              },
+            }}
+          >
+            <DeleteOutline sx={{ fontSize: 16 }} />
+          </IconButton>
+        </CustomTooltip>
         <IconButton
           size="small"
           customColor="#6366f1"

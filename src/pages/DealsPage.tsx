@@ -838,7 +838,18 @@ const DealsPage = () => {
                                 borderRadius: 999,
                                 border: '1px solid #fca5a5',
                                 backgroundColor: '#fff1f2',
-                                '&:hover': { backgroundColor: '#ffe4e6' },
+                                '&:hover': {
+                                  backgroundColor: '#ffe4e6',
+                                  borderColor: '#fca5a5',
+                                  color: '#ef4444',
+                                },
+                                '&:focus, &:focus-visible, &.Mui-focusVisible': {
+                                  backgroundColor: '#ffe4e6',
+                                  borderColor: '#fca5a5',
+                                  color: '#ef4444',
+                                  boxShadow: 'none',
+                                  outline: 'none',
+                                },
                               }}
                               onClick={() => {
                                 setDealToDeleteId(deal._id);
@@ -995,7 +1006,18 @@ const DealsPage = () => {
                               borderRadius: 999,
                               border: '1px solid #fca5a5',
                               backgroundColor: '#fff1f2',
-                              '&:hover': { backgroundColor: '#ffe4e6' },
+                              '&:hover': {
+                                backgroundColor: '#ffe4e6',
+                                borderColor: '#fca5a5',
+                                color: '#ef4444',
+                              },
+                              '&:focus, &:focus-visible, &.Mui-focusVisible': {
+                                backgroundColor: '#ffe4e6',
+                                borderColor: '#fca5a5',
+                                color: '#ef4444',
+                                boxShadow: 'none',
+                                outline: 'none',
+                              },
                             }}
                             onClick={() => {
                               setDealToDeleteId(deal._id);

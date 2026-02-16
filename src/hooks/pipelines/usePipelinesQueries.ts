@@ -76,7 +76,8 @@ export const usePipelinesQuery = (page: number, limit: number, search?: string) 
     ...query,
     pipelines: toPipelineList(query.data),
     pagination: toPagination(query.data),
-    loading: query.isLoading,
+    loading: query.isLoading || query.isFetching,
+    fetching: query.isFetching,
     hasError: query.isError,
     errorMessage: query.error?.message ?? null,
   };
@@ -99,7 +100,8 @@ export const usePipelinesOptionsQuery = (enabled = true) => {
   return {
     ...query,
     pipelines: toPipelineList(query.data),
-    loading: query.isLoading,
+    loading: query.isLoading || query.isFetching,
+    fetching: query.isFetching,
     hasError: query.isError,
     errorMessage: query.error?.message ?? null,
   };
@@ -125,7 +127,8 @@ export const usePipelineByIdQuery = (pipelineId?: string) => {
   return {
     ...query,
     pipeline: query.data,
-    loading: query.isLoading,
+    loading: query.isLoading || query.isFetching,
+    fetching: query.isFetching,
     hasError: query.isError,
     errorMessage: query.error?.message ?? null,
   };
@@ -145,7 +148,8 @@ export const usePipelineStagesQuery = (pipelineId?: string, enabled = true) => {
   return {
     ...query,
     stages: query.data?.stages ?? [],
-    loading: query.isLoading,
+    loading: query.isLoading || query.isFetching,
+    fetching: query.isFetching,
     hasError: query.isError,
     errorMessage: query.error?.message ?? null,
   };

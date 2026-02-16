@@ -1,4 +1,5 @@
 import type React from 'react';
+import type { SxProps, Theme } from '@mui/material';
 import { Box, Typography } from '@mui/material';
 
 interface PageHeaderProps {
@@ -7,6 +8,8 @@ interface PageHeaderProps {
   action?: React.ReactNode;
   stackOnMobile?: boolean;
   actionFullWidthOnMobile?: boolean;
+  titleSx?: SxProps<Theme>;
+  subtitleSx?: SxProps<Theme>;
 }
 
 const PageHeader = ({
@@ -15,6 +18,8 @@ const PageHeader = ({
   action,
   stackOnMobile = true,
   actionFullWidthOnMobile = true,
+  titleSx,
+  subtitleSx,
 }: PageHeaderProps) => (
   <Box
     sx={{
@@ -27,11 +32,11 @@ const PageHeader = ({
     }}
   >
     <Box>
-      <Typography variant="h4" gutterBottom={Boolean(subtitle)}>
+      <Typography variant="h4" gutterBottom={Boolean(subtitle)} sx={titleSx}>
         {title}
       </Typography>
       {subtitle ? (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="text.secondary" sx={subtitleSx}>
           {subtitle}
         </Typography>
       ) : null}

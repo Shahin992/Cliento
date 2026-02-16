@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Avatar, Box, Modal, Stack, Typography } from '@mui/material';
+import { Avatar, Box, Modal, Stack, Tooltip, Typography } from '@mui/material';
 import { CustomIconButton as IconButton } from '../../../common/CustomIconButton';
 import { AddOutlined, CloseOutlined, DeleteOutlineOutlined } from '@mui/icons-material';
 import { MuiTelInput } from 'mui-tel-input';
@@ -57,6 +57,12 @@ const removeIconSx = {
   '&:hover': {
     backgroundColor: '#fef2f2',
     borderColor: '#ef4444',
+  },
+  '&:focus, &:focus-visible, &.Mui-focusVisible': {
+    backgroundColor: '#fef2f2',
+    borderColor: '#ef4444',
+    boxShadow: 'none',
+    outline: 'none',
   },
 };
 
@@ -439,9 +445,11 @@ const AddContactModal = ({
                     onChange={(event) => updateEmail(index, event.target.value)}
                   />
                   {emails.length > 1 ? (
-                    <IconButton size="small" onClick={() => removeEmail(index)} sx={removeIconSx}>
-                      <DeleteOutlineOutlined sx={{ fontSize: 16, color: '#ef4444' }} />
-                    </IconButton>
+                    <Tooltip title="Remove email" placement="top">
+                      <IconButton size="small" onClick={() => removeEmail(index)} sx={removeIconSx}>
+                        <DeleteOutlineOutlined sx={{ fontSize: 16, color: '#ef4444' }} />
+                      </IconButton>
+                    </Tooltip>
                   ) : null}
                 </Stack>
               ))}
@@ -483,13 +491,15 @@ const AddContactModal = ({
                   sx={phoneInputSx}
                 />
                 {phoneNumbers.length > 1 ? (
-                  <IconButton
-                    size="small"
-                    onClick={() => removePhoneNumber(index)}
-                    sx={removeIconSx}
-                  >
-                    <DeleteOutlineOutlined sx={{ fontSize: 16, color: '#ef4444' }} />
-                  </IconButton>
+                  <Tooltip title="Remove number" placement="top">
+                    <IconButton
+                      size="small"
+                      onClick={() => removePhoneNumber(index)}
+                      sx={removeIconSx}
+                    >
+                      <DeleteOutlineOutlined sx={{ fontSize: 16, color: '#ef4444' }} />
+                    </IconButton>
+                  </Tooltip>
                 ) : null}
               </Stack>
             ))}
