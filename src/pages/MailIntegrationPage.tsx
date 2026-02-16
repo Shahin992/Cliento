@@ -47,18 +47,35 @@ const getActionErrorMessage = (error: unknown, fallback: string) => {
   return fallback;
 };
 
+type MailboxAction = 'make-default' | 'disconnect' | 'delete';
+
 const MailIntegrationPage = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [disconnectTarget, setDisconnectTarget] = useState<GoogleMailbox | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<GoogleMailbox | null>(null);
+  const [pendingActionKeys, setPendingActionKeys] = useState<Set<string>>(new Set());
   const { showToast } = useToast();
 
   const { accounts, loading, errorMessage, error, refetch } = useGoogleMailAccountsQuery(true);
   const { disconnectMailbox, loading: disconnectLoading } = useDisconnectGoogleMailboxMutation();
   const { deleteMailbox, loading: deleteLoading } = useDeleteGoogleMailboxMutation();
-  const { makeDefaultMailbox, loading: makeDefaultLoading } = useMakeDefaultGoogleMailboxMutation();
+  const { makeDefaultMailbox } = useMakeDefaultGoogleMailboxMutation();
 
-  const isActionLoading = disconnectLoading || deleteLoading || makeDefaultLoading;
+  const getActionKey = (mailboxId: string, action: MailboxAction) => `${action}:${mailboxId}`;
+  const setActionPending = (mailboxId: string, action: MailboxAction, pending: boolean) => {
+    const key = getActionKey(mailboxId, action);
+    setPendingActionKeys((prev) => {
+      const next = new Set(prev);
+      if (pending) {
+        next.add(key);
+      } else {
+        next.delete(key);
+      }
+      return next;
+    });
+  };
+  const isActionPending = (mailboxId: string, action: MailboxAction) =>
+    pendingActionKeys.has(getActionKey(mailboxId, action));
 
   const loadAccounts = async () => {
     setIsRefreshing(true);
@@ -83,8 +100,10 @@ const MailIntegrationPage = () => {
 
   const handleConfirmDisconnect = async () => {
     if (!disconnectTarget?._id) return;
+    const mailboxId = disconnectTarget._id;
+    setActionPending(mailboxId, 'disconnect', true);
     try {
-      const response = await disconnectMailbox(disconnectTarget._id);
+      const response = await disconnectMailbox(mailboxId);
       showToast({
         message: response.message || 'Google mailbox disconnected.',
         severity: 'success',
@@ -96,14 +115,17 @@ const MailIntegrationPage = () => {
         severity: 'error',
       });
     } finally {
+      setActionPending(mailboxId, 'disconnect', false);
       setDisconnectTarget(null);
     }
   };
 
   const handleConfirmDelete = async () => {
     if (!deleteTarget?._id) return;
+    const mailboxId = deleteTarget._id;
+    setActionPending(mailboxId, 'delete', true);
     try {
-      const response = await deleteMailbox(deleteTarget._id);
+      const response = await deleteMailbox(mailboxId);
       showToast({
         message: response.message || 'Google mailbox deleted.',
         severity: 'success',
@@ -115,11 +137,13 @@ const MailIntegrationPage = () => {
         severity: 'error',
       });
     } finally {
+      setActionPending(mailboxId, 'delete', false);
       setDeleteTarget(null);
     }
   };
 
   const handleMakeDefault = async (mailbox: GoogleMailbox) => {
+    setActionPending(mailbox._id, 'make-default', true);
     try {
       const response = await makeDefaultMailbox(mailbox._id);
       showToast({
@@ -132,6 +156,8 @@ const MailIntegrationPage = () => {
         message: getActionErrorMessage(error, 'Failed to update default mailbox.'),
         severity: 'error',
       });
+    } finally {
+      setActionPending(mailbox._id, 'make-default', false);
     }
   };
 
@@ -164,7 +190,7 @@ const MailIntegrationPage = () => {
               variant="outlined"
               startIcon={<RefreshOutlined />}
               onClick={() => void loadAccounts()}
-              disabled={loading || isRefreshing || isActionLoading}
+              disabled={loading || isRefreshing}
               sx={{ textTransform: 'none', borderRadius: 999 }}
             >
               Refresh
@@ -173,7 +199,7 @@ const MailIntegrationPage = () => {
               variant="contained"
               startIcon={<EmailOutlined />}
               onClick={handleConnectEmail}
-              disabled={!canConnect || isActionLoading}
+              disabled={!canConnect}
               sx={{
                 textTransform: 'none',
                 borderRadius: 999,
@@ -278,7 +304,7 @@ const MailIntegrationPage = () => {
                   variant="contained"
                   startIcon={<EmailOutlined />}
                   onClick={handleConnectEmail}
-                  disabled={!canConnect || isActionLoading}
+                  disabled={!canConnect}
                   sx={{
                     textTransform: 'none',
                     borderRadius: 999,
@@ -363,7 +389,7 @@ const MailIntegrationPage = () => {
                           variant="contained"
                           startIcon={<EmailOutlined />}
                           onClick={handleConnectEmail}
-                          disabled={!canConnect || isActionLoading}
+                          disabled={!canConnect}
                           sx={{
                             textTransform: 'none',
                             borderRadius: 999,
@@ -378,7 +404,7 @@ const MailIntegrationPage = () => {
                         <CustomButton
                           variant="contained"
                           onClick={() => void handleMakeDefault(mailbox)}
-                          disabled={isActionLoading}
+                          disabled={isActionPending(mailbox._id, 'make-default')}
                           customColor={primary}
                           sx={{ textTransform: 'none', borderRadius: 999 }}
                         >
@@ -390,7 +416,7 @@ const MailIntegrationPage = () => {
                           variant="outlined"
                           startIcon={<LinkOff />}
                           onClick={() => setDisconnectTarget(mailbox)}
-                          disabled={isActionLoading}
+                          disabled={isActionPending(mailbox._id, 'disconnect')}
                           sx={{ textTransform: 'none', borderRadius: 999 }}
                         >
                           Disconnect
@@ -401,7 +427,7 @@ const MailIntegrationPage = () => {
                         color="error"
                         startIcon={<DeleteOutline />}
                         onClick={() => setDeleteTarget(mailbox)}
-                        disabled={isActionLoading || !canDelete}
+                        disabled={isActionPending(mailbox._id, 'delete') || !canDelete}
                         sx={{ textTransform: 'none', borderRadius: 999 }}
                       >
                         Delete
