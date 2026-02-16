@@ -46,16 +46,7 @@ const bgSoft = 'linear-gradient(180deg, #f6f9ff 0%, #ffffff 50%, #f8fbff 100%)';
 const DEFAULT_PAGE_SIZE = 10;
 const PAGE_LIMIT_OPTIONS = [10, 25, 50, 100];
 
-const formatDateTime = (value?: string) => {
-  if (!value) return '-';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '-';
-  return date.toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-};
+
 
 const cardSx = {
   borderRadius: 3,
