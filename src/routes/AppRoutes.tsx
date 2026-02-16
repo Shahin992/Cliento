@@ -20,6 +20,8 @@ import ResetPasswordPage from '../pages/ResetPasswordPage';
 import UserManagementPage from '../pages/UserManagementPage';
 import WelcomePage from '../pages/WelcomePage';
 import PaymentSuccessPage from '../pages/PaymentSuccessPage';
+import MailIntegrationPage from '../pages/MailIntegrationPage';
+import GoogleCallbackPage from '../pages/GoogleCallbackPage';
 import RequireAuth from './RequireAuth';
 import PublicOnly from './PublicOnly';
 
@@ -32,6 +34,7 @@ const AppRoutes = () => (
     </Route>
     <Route path="/welcome" element={<WelcomePage />} />
     <Route path="/payment/success" element={<PaymentSuccessPage />} />
+    <Route path="/google/callback" element={<GoogleCallbackPage />} />
     <Route path="/forgot" element={<ForgotPasswordPage />} />
     <Route path="/reset" element={<ResetPasswordPage />} />
     <Route element={<RequireAuth />}>
@@ -48,6 +51,7 @@ const AppRoutes = () => (
       <Route path="/settings/users" element={<UserManagementPage />} />
       <Route path="/settings/subscription" element={<SubscriptionPage />} />
       <Route path="/settings/subscription/create" element={<CreatePlanPage />} />
+      <Route path="/settings/mail" element={<MailIntegrationPage />} />
       </Route>
     </Route>
   </Routes>

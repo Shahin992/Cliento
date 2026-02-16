@@ -2,6 +2,7 @@ import { Box, Stack, Typography } from '@mui/material';
 import { Link } from 'react-router-dom';
 import {
   CreditCard,
+  MailOutline,
   ManageAccountsOutlined,
   Person2Outlined,
   WorkspacePremiumOutlined,
@@ -46,6 +47,12 @@ const settingsItems = [
     description: 'Update payment method and review transactions.',
     to: '/billings',
     icon: <CreditCard sx={{ width: 20, height: 20 }} />,
+  },
+  {
+    title: 'Mail Integration',
+    description: 'Connect and manage Gmail mailbox connection.',
+    to: '/settings/mail',
+    icon: <MailOutline sx={{ width: 20, height: 20 }} />,
   },
 ];
 
