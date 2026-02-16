@@ -1,6 +1,7 @@
 import { Box, Stack, Typography } from '@mui/material';
 import { Link } from 'react-router-dom';
 import {
+  AltRouteOutlined,
   CreditCard,
   MailOutline,
   ManageAccountsOutlined,
@@ -53,6 +54,12 @@ const settingsItems = [
     description: 'Connect and manage Gmail mailbox connection.',
     to: '/settings/mail',
     icon: <MailOutline sx={{ width: 20, height: 20 }} />,
+  },
+  {
+    title: 'Pipelines',
+    description: 'Create, edit, and organize deal pipelines.',
+    to: '/settings/pipelines',
+    icon: <AltRouteOutlined sx={{ width: 20, height: 20 }} />,
   },
 ];
 

@@ -22,6 +22,7 @@ import WelcomePage from '../pages/WelcomePage';
 import PaymentSuccessPage from '../pages/PaymentSuccessPage';
 import MailIntegrationPage from '../pages/MailIntegrationPage';
 import GoogleCallbackPage from '../pages/GoogleCallbackPage';
+import PipelinesManagementPage from '../pages/PipelinesManagementPage';
 import RequireAuth from './RequireAuth';
 import PublicOnly from './PublicOnly';
 
@@ -52,6 +53,7 @@ const AppRoutes = () => (
       <Route path="/settings/subscription" element={<SubscriptionPage />} />
       <Route path="/settings/subscription/create" element={<CreatePlanPage />} />
       <Route path="/settings/mail" element={<MailIntegrationPage />} />
+      <Route path="/settings/pipelines" element={<PipelinesManagementPage />} />
       </Route>
     </Route>
   </Routes>
