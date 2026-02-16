@@ -51,6 +51,13 @@ export const useCreatePipelineMutation = () => {
 export type UpdatePipelinePayload = {
   name?: string;
   isDefault?: boolean;
+  stages?: Array<{
+    _id?: string;
+    name: string;
+    color?: string | null;
+    order: number;
+    isDefault?: boolean;
+  }>;
 };
 
 type UpdatePipelineMutationVariables = {

@@ -2,10 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Chip,
+  FormControlLabel,
   InputAdornment,
   MenuItem,
   Modal,
   Pagination,
+  Radio,
+  RadioGroup,
   Select,
   Skeleton,
   Stack,
@@ -14,7 +17,6 @@ import {
 } from '@mui/material';
 import {
   AltRouteOutlined,
-  CalendarTodayOutlined,
   DeleteOutlineOutlined,
   EditOutlined,
   SearchOutlined,
@@ -107,6 +109,7 @@ const MetricCard = ({
         backgroundColor: palette.bg,
         px: 1.5,
         py: 1.1,
+        flex: { xs: 'unset', sm: 1 },
         minWidth: 0,
       }}
     >
@@ -330,11 +333,17 @@ const PipelinesManagementPage = () => {
       >
         <Box sx={{ p: { xs: 1.25, sm: 1.5 }, flex: 1, minHeight: 0, overflowY: 'auto' }}>
           {loading ? (
-            <Stack spacing={1}>
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', xl: 'repeat(2, minmax(0, 1fr))' },
+                gap: 1,
+              }}
+            >
               {Array.from({ length: Math.max(3, Math.min(limit, 8)) }).map((_, index) => (
                 <PipelineRowSkeleton key={index} />
               ))}
-            </Stack>
+            </Box>
           ) : null}
 
           {!loading && errorMessage ? (
@@ -382,7 +391,13 @@ const PipelinesManagementPage = () => {
           ) : null}
 
           {!loading && !errorMessage && rows.length > 0 ? (
-            <Stack spacing={1}>
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', xl: 'repeat(2, minmax(0, 1fr))' },
+                gap: 1,
+              }}
+            >
               {rows.map((pipeline) => {
                 const stages = pipeline.stages ?? [];
 
@@ -400,14 +415,9 @@ const PipelinesManagementPage = () => {
                       },
                     }}
                   >
-                    <Stack
-                      direction={{ xs: 'column', md: 'row' }}
-                      spacing={1.2}
-                      justifyContent="space-between"
-                      alignItems={{ xs: 'flex-start', md: 'center' }}
-                    >
-                      <Stack spacing={0.9} sx={{ minWidth: 0, flex: 1 }}>
-                        <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap">
+                    <Stack spacing={0.9}>
+                      <Stack direction="row" justifyContent="space-between" alignItems="center" gap={1}>
+                        <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" sx={{ minWidth: 0 }}>
                           <Typography sx={{ fontWeight: 800, color: '#0f172a', fontSize: 18 }}>
                             {pipeline.name}
                           </Typography>
@@ -427,86 +437,88 @@ const PipelinesManagementPage = () => {
                           />
                         </Stack>
 
-                        <Stack direction="row" spacing={0.7} alignItems="center" flexWrap="wrap">
-                          <AltRouteOutlined sx={{ fontSize: 14, color: mutedText }} />
-                          <Typography sx={{ color: '#334155', fontWeight: 700, fontSize: 14 }}>
-                            {stages.length} {stages.length === 1 ? 'stage' : 'stages'}
-                          </Typography>
-                          <CalendarTodayOutlined sx={{ fontSize: 14, color: mutedText }} />
-                          <Typography sx={{ color: mutedText, fontSize: 14 }}>
-                            Updated {formatDateTime(pipeline.updatedAt)}
-                          </Typography>
+                        <Stack direction="row" spacing={0.75} sx={{ flexShrink: 0 }}>
+                          <Tooltip title="Edit Pipeline" placement="top">
+                            <CustomIconButton
+                              size="small"
+                              sx={{
+                                width: 36,
+                                height: 36,
+                                borderRadius: 999,
+                                border: `1px solid ${borderColor}`,
+                                backgroundColor: '#fff',
+                              }}
+                              onClick={() => openEditModal(pipeline)}
+                            >
+                              <EditOutlined sx={{ fontSize: 16, color: '#64748b' }} />
+                            </CustomIconButton>
+                          </Tooltip>
+                          <Tooltip title="Delete Pipeline" placement="top">
+                            <CustomIconButton
+                              size="small"
+                              sx={{
+                                width: 36,
+                                height: 36,
+                                borderRadius: 999,
+                                border: '1px solid #fecaca',
+                                backgroundColor: '#fff1f2',
+                              }}
+                              onClick={() => setPipelineToDelete(pipeline)}
+                            >
+                              <DeleteOutlineOutlined sx={{ fontSize: 16, color: '#ef4444' }} />
+                            </CustomIconButton>
+                          </Tooltip>
                         </Stack>
-
-                        {stages.length > 0 ? (
-                          <Stack direction="row" spacing={0.6} flexWrap="wrap" sx={{ rowGap: 0.7 }}>
-                            {stages.slice(0, 5).map((stage) => (
-                              <Chip
-                                key={stage._id}
-                                size="small"
-                                label={stage.name}
-                                sx={{
-                                  borderRadius: 999,
-                                  bgcolor: '#f8fafc',
-                                  color: '#334155',
-                                  border: '1px solid #e2e8f0',
-                                  fontWeight: 600,
-                                }}
-                              />
-                            ))}
-                            {stages.length > 5 ? (
-                              <Chip
-                                size="small"
-                                label={`+${stages.length - 5} more`}
-                                sx={{
-                                  borderRadius: 999,
-                                  bgcolor: '#eff6ff',
-                                  color: '#1d4ed8',
-                                  fontWeight: 700,
-                                }}
-                              />
-                            ) : null}
-                          </Stack>
-                        ) : null}
                       </Stack>
 
-                      <Stack direction="row" spacing={0.75}>
-                        <Tooltip title="Edit Pipeline" placement="top">
-                          <CustomIconButton
-                            size="small"
-                            sx={{
-                              width: 36,
-                              height: 36,
-                              borderRadius: 999,
-                              border: `1px solid ${borderColor}`,
-                              backgroundColor: '#fff',
-                            }}
-                            onClick={() => openEditModal(pipeline)}
-                          >
-                            <EditOutlined sx={{ fontSize: 16, color: '#64748b' }} />
-                          </CustomIconButton>
-                        </Tooltip>
-                        <Tooltip title="Delete Pipeline" placement="top">
-                          <CustomIconButton
-                            size="small"
-                            sx={{
-                              width: 36,
-                              height: 36,
-                              borderRadius: 999,
-                              border: '1px solid #fecaca',
-                              backgroundColor: '#fff1f2',
-                            }}
-                            onClick={() => setPipelineToDelete(pipeline)}
-                          >
-                            <DeleteOutlineOutlined sx={{ fontSize: 16, color: '#ef4444' }} />
-                          </CustomIconButton>
-                        </Tooltip>
+                      <Stack direction="row" spacing={0.7} alignItems="center" flexWrap="wrap">
+                        <Chip
+                          size="small"
+                          label={`${stages.length} ${stages.length === 1 ? 'stage' : 'stages'}`}
+                          sx={{
+                            borderRadius: 999,
+                            fontWeight: 700,
+                            bgcolor: '#eef4ff',
+                            color: '#1d4ed8',
+                          }}
+                        />
                       </Stack>
+
+                      {stages.length > 0 ? (
+                        <Stack direction="row" spacing={0.6} flexWrap="wrap" sx={{ rowGap: 0.7 }}>
+                          {stages.slice(0, 5).map((stage) => (
+                            <Chip
+                              key={stage._id}
+                              size="small"
+                              label={stage.name}
+                              sx={{
+                                borderRadius: 999,
+                                bgcolor: '#f8fafc',
+                                color: '#334155',
+                                border: '1px solid #e2e8f0',
+                                fontWeight: 600,
+                              }}
+                            />
+                          ))}
+                          {stages.length > 5 ? (
+                            <Chip
+                              size="small"
+                              label={`+${stages.length - 5} more`}
+                              sx={{
+                                borderRadius: 999,
+                                bgcolor: '#eff6ff',
+                                color: '#1d4ed8',
+                                fontWeight: 700,
+                              }}
+                            />
+                          ) : null}
+                        </Stack>
+                      ) : null}
                     </Stack>
                   </Box>
                 );
               })}
-            </Stack>
+            </Box>
           ) : null}
         </Box>
 
@@ -602,6 +614,7 @@ const PipelinesManagementPage = () => {
             id: editingPipeline._id,
             name: editingPipeline.name,
             isDefault: editingPipeline.isDefault,
+            stages: editingPipeline.stages,
           }}
           onClose={() => setEditingPipeline(null)}
           onUpdateSuccess={() => {
@@ -632,45 +645,67 @@ const PipelinesManagementPage = () => {
             <Stack spacing={1.3}>
               <Typography sx={{ fontWeight: 800, color: '#0f172a' }}>Delete Pipeline</Typography>
               <Typography sx={{ color: mutedText, fontSize: 13 }}>
-                Choose what happens to deals linked to{' '}
+                Before deleting, choose what should happen to deals in{' '}
                 <Box component="span" sx={{ fontWeight: 700, color: '#0f172a' }}>
                   {pipelineToDelete.name}
                 </Box>
                 .
               </Typography>
 
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-                <CustomButton
-                  variant={deleteDealAction === 'move' ? 'contained' : 'outlined'}
-                  customColor={deleteDealAction === 'move' ? primary : '#64748b'}
-                  sx={{ borderRadius: 999, textTransform: 'none', flex: 1 }}
-                  onClick={() => {
-                    setDeleteDealAction('move');
-                    if (!targetPipelineId && availableTargetPipelines[0]?._id) {
-                      setTargetPipelineId(availableTargetPipelines[0]._id);
-                    }
-                    setDeleteValidationError(null);
-                  }}
-                >
-                  Move Deals
-                </CustomButton>
-                <CustomButton
-                  variant={deleteDealAction === 'delete' ? 'contained' : 'outlined'}
-                  customColor={deleteDealAction === 'delete' ? '#ef4444' : '#ef4444'}
-                  sx={{ borderRadius: 999, textTransform: 'none', flex: 1 }}
-                  onClick={() => {
-                    setDeleteDealAction('delete');
-                    setDeleteValidationError(null);
-                  }}
-                >
-                  Delete Deals
-                </CustomButton>
-              </Stack>
+              <RadioGroup
+                value={deleteDealAction}
+                onChange={(event) => {
+                  const selected = event.target.value as 'move' | 'delete';
+                  setDeleteDealAction(selected);
+                  if (selected === 'move' && !targetPipelineId && availableTargetPipelines[0]?._id) {
+                    setTargetPipelineId(availableTargetPipelines[0]._id);
+                  }
+                  setDeleteValidationError(null);
+                }}
+                sx={{
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 2,
+                  px: 1.25,
+                  py: 0.75,
+                  gap: 0.5,
+                }}
+              >
+                <FormControlLabel
+                  value="move"
+                  control={<Radio size="small" />}
+                  label={
+                    <Box>
+                      <Typography sx={{ fontWeight: 700, color: '#0f172a', fontSize: 13.5 }}>
+                        Move deals to another pipeline
+                      </Typography>
+                      <Typography sx={{ color: mutedText, fontSize: 12 }}>
+                        Recommended. Keeps deals active and organized.
+                      </Typography>
+                    </Box>
+                  }
+                  sx={{ alignItems: 'flex-start', m: 0 }}
+                />
+                <FormControlLabel
+                  value="delete"
+                  control={<Radio size="small" />}
+                  label={
+                    <Box>
+                      <Typography sx={{ fontWeight: 700, color: '#0f172a', fontSize: 13.5 }}>
+                        Remove deals from active list
+                      </Typography>
+                      <Typography sx={{ color: mutedText, fontSize: 12 }}>
+                        This will remove those deals permanently.
+                      </Typography>
+                    </Box>
+                  }
+                  sx={{ alignItems: 'flex-start', m: 0 }}
+                />
+              </RadioGroup>
 
               {deleteDealAction === 'move' ? (
                 <Box>
                   <Typography sx={{ color: mutedText, fontSize: 13, mb: 0.75 }}>
-                    Deals in this pipeline will be moved to the selected pipeline.
+                    Pick the destination pipeline for all current deals.
                   </Typography>
                   <Typography sx={{ fontWeight: 700, color: '#0f172a', mb: 0.6, fontSize: 13 }}>
                     Target Pipeline
@@ -701,14 +736,14 @@ const PipelinesManagementPage = () => {
               ) : null}
 
               {deleteDealAction === 'delete' ? (
-                <Typography sx={{ color: '#b91c1c', fontSize: 13, fontWeight: 600 }}>
-                  All deals in this pipeline will be soft-deleted.
+                <Typography sx={{ color: '#b91c1c', fontSize: 13, fontWeight: 600, lineHeight: 1.4 }}>
+                  Deals in this pipeline will be permanently removed and cannot be restored.
                 </Typography>
               ) : null}
 
               {!deleteDealAction ? (
                 <Typography sx={{ color: mutedText, fontSize: 13 }}>
-                  Select one option to continue: move deals to another pipeline or soft-delete them.
+                  Choose one option to continue.
                 </Typography>
               ) : null}
 

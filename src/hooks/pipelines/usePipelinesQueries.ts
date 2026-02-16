@@ -9,8 +9,8 @@ export type PipelineOption = {
 
 export const pipelineQueryKeys = {
   all: ['pipelines'] as const,
-  list: (page: number, limit: number, search?: string) =>
-    ['pipelines', 'list', { page, limit, search: (search ?? '').trim() }] as const,
+  listWithStages: (page: number, limit: number, search?: string) =>
+    ['pipelines', 'with-stages', { page, limit, search: (search ?? '').trim() }] as const,
   options: ['pipelines', 'options'] as const,
   detail: (pipelineId: string) => ['pipelines', 'detail', pipelineId] as const,
   stages: (pipelineId: string) => ['pipelines', 'stages', pipelineId] as const,
@@ -59,10 +59,10 @@ const toPagination = (data?: PipelinesResponseData) => {
 
 export const usePipelinesQuery = (page: number, limit: number, search?: string) => {
   const query = useAppQuery<PipelinesResponseData>({
-    queryKey: pipelineQueryKeys.list(page, limit, search),
+    queryKey: pipelineQueryKeys.listWithStages(page, limit, search),
     request: {
       method: 'GET',
-      url: '/api/pipelines',
+      url: '/api/pipelines/with-stages',
       params: {
         page,
         limit,
