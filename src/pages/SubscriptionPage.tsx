@@ -1,82 +1,37 @@
-import { useMemo, useState } from 'react';
-import { Box, Stack, Typography } from '@mui/material';
+import { useMemo } from 'react';
+import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
+import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
+import { Box, Chip, Stack, Typography } from '@mui/material';
 import { Link } from 'react-router-dom';
 
 import PageHeader from '../components/PageHeader';
 import { CustomButton } from '../common/CustomButton';
-import { startStripeCheckout } from '../lib/stripeCheckout';
+import { usePackagesQuery } from '../hooks/packages/usePackagesQueries';
 
-const borderColor = '#e7edf6';
-const mutedText = '#8b95a7';
-const primary = '#6d28ff';
-const bgSoft = '#f8fbff';
+const borderColor = '#dbe4f0';
+const mutedText = '#64748b';
+const primary = '#1d4ed8';
+const bgSoft = 'linear-gradient(180deg, #f8fbff 0%, #f3f7ff 50%, #edf3ff 100%)';
 
 const cardSx = {
   borderRadius: 3,
   border: `1px solid ${borderColor}`,
   backgroundColor: 'white',
-  px: { xs: 1.5, sm: 2.5 },
-  py: { xs: 2, sm: 2.5 },
+  px: { xs: 2, sm: 2.25 },
+  py: { xs: 2.25, sm: 2.5 },
 };
 
-const plans = [
-  {
-    id: 'individual',
-    name: 'Individual',
-    description: 'Single user account',
-    monthly: 59,
-    oldPrice: 79,
-    features: ['CRM', 'Sales & Service Pipelines'],
-  },
-  {
-    id: 'small-team',
-    name: 'Small Team',
-    description: '1-3 users',
-    monthly: 99,
-    oldPrice: 129,
-    features: ['CRM', 'Sales & Service Pipelines'],
-    highlight: true,
-  },
-  {
-    id: 'team',
-    name: 'Team',
-    description: 'Up to 10 team members',
-    monthly: 149,
-    oldPrice: 199,
-    features: ['CRM', 'Sales & Service Pipelines'],
-  },
-];
-
 const SubscriptionPage = () => {
-  const [selectedPlanId, setSelectedPlanId] = useState('small-team');
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
-  const [checkoutError, setCheckoutError] = useState<string | null>(null);
-  const isStripeMock = import.meta.env.VITE_STRIPE_MOCK === 'true';
+  const { packages, loading, errorMessage } = usePackagesQuery();
 
-  const selectedPlan = useMemo(
-    () => plans.find((plan) => plan.id === selectedPlanId) ?? plans[1],
-    [selectedPlanId],
+  const sortedPackages = useMemo(
+    () =>
+      [...packages].sort((a, b) => {
+        if (a.isDefault !== b.isDefault) return a.isDefault ? -1 : 1;
+        return (a.price?.amount ?? 0) - (b.price?.amount ?? 0);
+      }),
+    [packages],
   );
-
-  const currentPrice = selectedPlan.monthly;
-  const handleCheckout = async () => {
-    setCheckoutError(null);
-    setCheckoutLoading(true);
-    try {
-      await startStripeCheckout({
-        planId: selectedPlan.id,
-        quantity: 1,
-        successPath: '/payment/success',
-        cancelPath: '/settings/subscription?status=cancel',
-      });
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Unable to start checkout';
-      setCheckoutError(message);
-    } finally {
-      setCheckoutLoading(false);
-    }
-  };
 
   return (
     <Box
@@ -89,6 +44,7 @@ const SubscriptionPage = () => {
         display: 'flex',
         flexDirection: 'column',
         gap: 2,
+        background: bgSoft,
       }}
     >
       <PageHeader
@@ -107,43 +63,102 @@ const SubscriptionPage = () => {
               component={Link}
               to="/settings/subscription/create"
               variant="contained"
+              customColor={primary}
               sx={{ borderRadius: 999, px: 2.5, textTransform: 'none' }}
             >
-              Create Plan
+              Create Package
             </CustomButton>
           </Stack>
         }
       />
 
+      <Box sx={{ ...cardSx, py: 1.25, px: 1.25, maxWidth: 260, alignSelf: 'center' }}>
+        <Stack direction="row" spacing={1} sx={{ borderRadius: 999, p: 0.5, bgcolor: '#f1f5f9' }}>
+          <Box
+            sx={{
+              flex: 1,
+              textAlign: 'center',
+              py: 0.5,
+              borderRadius: 999,
+              bgcolor: 'white',
+              fontWeight: 700,
+              color: '#0f172a',
+              fontSize: 14,
+            }}
+          >
+            Personal
+          </Box>
+          <Box
+            sx={{
+              flex: 1,
+              textAlign: 'center',
+              py: 0.5,
+              borderRadius: 999,
+              color: '#64748b',
+              fontWeight: 700,
+              fontSize: 14,
+            }}
+          >
+            Business
+          </Box>
+        </Stack>
+      </Box>
+
+      {loading ? (
+        <Box sx={cardSx}>
+          <Typography sx={{ color: mutedText }}>Loading packages...</Typography>
+        </Box>
+      ) : null}
+
+      {!loading && errorMessage ? (
+        <Box sx={{ ...cardSx, borderColor: '#fecaca', bgcolor: '#fff1f2' }}>
+          <Typography sx={{ color: '#be123c', fontWeight: 600 }}>
+            Failed to load billing packages.
+          </Typography>
+          <Typography sx={{ color: '#be123c', mt: 0.5 }}>{errorMessage}</Typography>
+        </Box>
+      ) : null}
+
+      {!loading && !errorMessage && sortedPackages.length === 0 ? (
+        <Box sx={cardSx}>
+          <Typography sx={{ color: mutedText }}>No packages available yet.</Typography>
+        </Box>
+      ) : null}
+
       <Box
         sx={{
           display: 'grid',
-          gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' },
+          gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)', xl: 'repeat(4, 1fr)' },
           gap: 2,
         }}
       >
-        {plans.map((plan) => {
-          const isSelected = selectedPlanId === plan.id;
-          const price = plan.monthly;
+        {!loading && !errorMessage
+          ? sortedPackages.map((pkg) => {
+              const isInactive = pkg.isActive === false;
+              const ctaText = `Get ${pkg.name}`;
+              const headerLabel = pkg.isDefault ? 'Recommended' : undefined;
+
           return (
             <Box
-              key={plan.id}
+              key={pkg._id}
               sx={{
                 ...cardSx,
-                borderColor: isSelected ? primary : borderColor,
-                boxShadow: isSelected ? '0 18px 30px rgba(109, 40, 255, 0.18)' : 'none',
+                borderColor: isInactive ? '#e2e8f0' : borderColor,
                 position: 'relative',
                 overflow: 'hidden',
+                minHeight: 620,
+                display: 'flex',
+                flexDirection: 'column',
               }}
             >
-              {plan.highlight ? (
+              {headerLabel ? (
                 <Box
                   sx={{
                     position: 'absolute',
                     top: 16,
                     right: 16,
-                    bgcolor: '#ede9fe',
-                    color: primary,
+                    bgcolor: '#dbeafe',
+                    color: '#1e3a8a',
                     fontSize: 11,
                     fontWeight: 700,
                     px: 1.2,
@@ -154,120 +169,83 @@ const SubscriptionPage = () => {
                   Popular
                 </Box>
               ) : null}
-              <Stack spacing={1.5}>
+              <Stack spacing={1.5} sx={{ height: '100%' }}>
                 <Box>
                   <Typography sx={{ fontWeight: 700, color: '#0f172a', fontSize: 18 }}>
-                    {plan.name}
+                    {pkg.name}
                   </Typography>
-                  <Typography sx={{ color: mutedText, mt: 0.5 }}>{plan.description}</Typography>
+                  <Typography sx={{ color: mutedText, mt: 0.5 }}>
+                    {pkg.description}
+                  </Typography>
                 </Box>
                 <Box>
-                  <Stack direction="row" spacing={1} alignItems="baseline">
-                    {plan.oldPrice ? (
-                      <Typography
-                        sx={{
-                          fontSize: 14,
-                          color: mutedText,
-                          textDecoration: 'line-through',
-                        }}
-                      >
-                        ${plan.oldPrice}
-                      </Typography>
-                    ) : null}
-                    <Typography sx={{ fontWeight: 800, fontSize: 32, color: primary }}>
-                      ${price}
-                      <Typography component="span" sx={{ fontSize: 13, color: mutedText, ml: 0.5 }}>
-                        /month
-                      </Typography>
+                  <Typography sx={{ fontWeight: 800, fontSize: 52, color: '#0f172a', lineHeight: 1 }}>
+                    ${pkg.price.amount}
+                    <Typography component="span" sx={{ fontSize: 24, color: mutedText, ml: 0.5 }}>
+                      / {pkg.billingCycle}
                     </Typography>
-                  </Stack>
+                  </Typography>
                 </Box>
-                <Stack spacing={0.75}>
-                  {plan.features.map((feature) => (
-                    <Typography key={feature} sx={{ color: '#0f172a', fontSize: 13 }}>
-                      • {feature}
-                    </Typography>
+
+                <CustomButton
+                  variant="outlined"
+                  customColor="#0f172a"
+                  customTextColor="#0f172a"
+                  sx={{ borderRadius: 999, textTransform: 'none', mt: 0.5, fontSize: 17 }}
+                  disabled={isInactive || !pkg.buyLinkUrl}
+                  onClick={() => {
+                    if (pkg.buyLinkUrl) {
+                      window.open(pkg.buyLinkUrl, '_blank', 'noopener,noreferrer');
+                    }
+                  }}
+                >
+                  {ctaText} ↗
+                </CustomButton>
+
+                <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', rowGap: 1 }}>
+                  {pkg.hasTrial ? (
+                    <Chip
+                      label={`${pkg.trialPeriodDays} day trial`}
+                      icon={<AutoAwesomeRoundedIcon sx={{ color: '#1d4ed8 !important' }} />}
+                      size="small"
+                      sx={{ bgcolor: '#eff6ff', color: '#1e3a8a', fontWeight: 700 }}
+                    />
+                  ) : null}
+                  <Chip
+                    label={`${pkg.limits.users} users`}
+                    size="small"
+                    sx={{ bgcolor: '#f8fafc', color: '#334155', fontWeight: 700 }}
+                  />
+                  {isInactive ? (
+                    <Chip
+                      label="Inactive"
+                      size="small"
+                      sx={{ bgcolor: '#fef2f2', color: '#991b1b', fontWeight: 700 }}
+                    />
+                  ) : null}
+                </Stack>
+
+                <Typography sx={{ color: '#0f172a', fontWeight: 700, mt: 0.75 }}>
+                  {pkg.isDefault ? 'Everything in previous plans and:' : 'Included features:'}
+                </Typography>
+                <Box sx={{ borderTop: `1px solid ${borderColor}` }} />
+                <Stack spacing={1.1} sx={{ pt: 0.25 }}>
+                  {pkg.features.map((feature) => (
+                    <Box key={feature} sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                      <CheckRoundedIcon sx={{ color: '#0f172a', fontSize: 18, mt: 0.2 }} />
+                      <Typography sx={{ color: '#0f172a', fontSize: 16 }}>{feature}</Typography>
+                    </Box>
                   ))}
                 </Stack>
-                <CustomButton
-                  variant={isSelected ? 'contained' : 'outlined'}
-                  customColor={isSelected ? primary : '#94a3b8'}
-                  sx={{ borderRadius: 999, textTransform: 'none', mt: 1 }}
-                  onClick={() => setSelectedPlanId(plan.id)}
-                >
-                  {isSelected ? 'Selected' : 'Select Plan'}
-                </CustomButton>
+                <Box sx={{ flexGrow: 1 }} />
+                <Typography sx={{ color: mutedText, fontSize: 13 }}>
+                  Price ID: {pkg.price.stripePriceId || 'N/A'}
+                </Typography>
               </Stack>
             </Box>
           );
-        })}
-      </Box>
-
-      <Box
-        sx={{
-          ...cardSx,
-          backgroundColor: bgSoft,
-          borderColor,
-          display: 'flex',
-          flexDirection: { xs: 'column', md: 'row' },
-          alignItems: { xs: 'flex-start', md: 'center' },
-          justifyContent: 'space-between',
-          gap: 2,
-        }}
-      >
-        <Box>
-          <Typography sx={{ fontWeight: 700, color: '#0f172a' }}>
-            Selected Plan: {selectedPlan.name}
-          </Typography>
-          <Typography sx={{ color: mutedText, mt: 0.5 }}>
-            ${currentPrice} per month
-          </Typography>
-        </Box>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-          <CustomButton
-            variant="outlined"
-            customColor="#94a3b8"
-            sx={{ borderRadius: 999, px: 2.5, textTransform: 'none' }}
-          >
-            Compare Plans
-          </CustomButton>
-          <CustomButton
-            variant="contained"
-            sx={{ borderRadius: 999, px: 2.5, textTransform: 'none' }}
-            onClick={handleCheckout}
-            disabled={checkoutLoading}
-          >
-            {checkoutLoading ? 'Opening Stripe...' : `Pay with Stripe (test)`}
-          </CustomButton>
-        </Stack>
-      </Box>
-
-      <Box
-        sx={{
-          ...cardSx,
-          borderColor: '#f59e0b',
-          backgroundColor: '#fff7ed',
-          color: '#7c2d12',
-        }}
-      >
-        <Stack spacing={1}>
-          <Typography sx={{ fontWeight: 700 }}>
-            Payment required to activate your subscription
-          </Typography>
-          <Typography sx={{ color: '#9a3412' }}>
-            Use Stripe test mode to complete checkout for {selectedPlan.name}.
-          </Typography>
-          {isStripeMock ? (
-            <Typography sx={{ color: '#a16207', fontWeight: 600 }}>
-              Stripe mock mode enabled (frontend only).
-            </Typography>
-          ) : null}
-          {checkoutError ? (
-            <Typography sx={{ color: '#b91c1c', fontWeight: 600 }}>
-              {checkoutError}
-            </Typography>
-          ) : null}
-        </Stack>
+            })
+          : null}
       </Box>
     </Box>
   );
