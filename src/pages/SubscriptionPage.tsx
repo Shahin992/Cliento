@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
 import { Box, Chip, Stack, Typography } from '@mui/material';
@@ -12,6 +12,7 @@ const borderColor = '#dbe4f0';
 const mutedText = '#64748b';
 const primary = '#1d4ed8';
 const bgSoft = 'linear-gradient(180deg, #f8fbff 0%, #f3f7ff 50%, #edf3ff 100%)';
+const contentMaxWidth = 1320;
 
 const cardSx = {
   borderRadius: 3,
@@ -23,6 +24,7 @@ const cardSx = {
 
 const SubscriptionPage = () => {
   const { packages, loading, errorMessage } = usePackagesQuery();
+  const [billingFilter, setBillingFilter] = useState<'monthly' | 'yearly'>('monthly');
 
   const sortedPackages = useMemo(
     () =>
@@ -32,6 +34,15 @@ const SubscriptionPage = () => {
       }),
     [packages],
   );
+
+  const visiblePackages = useMemo(() => {
+    return sortedPackages.filter((pkg) => {
+      const cycle = (pkg.billingCycle ?? '').toLowerCase();
+
+      if (billingFilter === 'monthly') return cycle.includes('month');
+      return cycle.includes('year') || cycle.includes('annual');
+    });
+  }, [sortedPackages, billingFilter]);
 
   return (
     <Box
@@ -43,75 +54,97 @@ const SubscriptionPage = () => {
         minHeight: { xs: 'calc(100vh - 96px)', sm: 'calc(100vh - 110px)' },
         display: 'flex',
         flexDirection: 'column',
+        alignItems: 'center',
         gap: 2,
         background: bgSoft,
       }}
     >
-      <PageHeader
-        title="Subscription"
-        subtitle="Choose a plan that fits your team"
-        action={
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-            <CustomButton
-              variant="outlined"
-              customColor="#94a3b8"
-              sx={{ borderRadius: 999, px: 2.5, textTransform: 'none' }}
-            >
-              Manage Billing
-            </CustomButton>
-            <CustomButton
-              component={Link}
-              to="/settings/subscription/create"
-              variant="contained"
-              customColor={primary}
-              sx={{ borderRadius: 999, px: 2.5, textTransform: 'none' }}
-            >
-              Create Package
-            </CustomButton>
-          </Stack>
-        }
-      />
+      <Box sx={{ width: '100%', maxWidth: contentMaxWidth }}>
+        <PageHeader
+          title="Subscription"
+          subtitle="Choose a plan that fits your team"
+          action={
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+              <CustomButton
+                variant="outlined"
+                customColor="#94a3b8"
+                sx={{ borderRadius: 999, px: 2.5, textTransform: 'none' }}
+              >
+                Manage Billing
+              </CustomButton>
+              <CustomButton
+                component={Link}
+                to="/settings/subscription/create"
+                variant="contained"
+                customColor={primary}
+                sx={{ borderRadius: 999, px: 2.5, textTransform: 'none' }}
+              >
+                Create Package
+              </CustomButton>
+            </Stack>
+          }
+        />
+      </Box>
 
       <Box sx={{ ...cardSx, py: 1.25, px: 1.25, maxWidth: 260, alignSelf: 'center' }}>
         <Stack direction="row" spacing={1} sx={{ borderRadius: 999, p: 0.5, bgcolor: '#f1f5f9' }}>
           <Box
+            component="button"
+            type="button"
+            onClick={() => setBillingFilter('monthly')}
             sx={{
               flex: 1,
               textAlign: 'center',
               py: 0.5,
               borderRadius: 999,
-              bgcolor: 'white',
+              bgcolor: billingFilter === 'monthly' ? 'white' : 'transparent',
               fontWeight: 700,
-              color: '#0f172a',
+              color: billingFilter === 'monthly' ? '#0f172a' : '#64748b',
               fontSize: 14,
+              border: 'none',
+              cursor: 'pointer',
             }}
           >
-            Personal
+            Monthly
           </Box>
           <Box
+            component="button"
+            type="button"
+            onClick={() => setBillingFilter('yearly')}
             sx={{
               flex: 1,
               textAlign: 'center',
               py: 0.5,
               borderRadius: 999,
-              color: '#64748b',
+              bgcolor: billingFilter === 'yearly' ? 'white' : 'transparent',
+              color: billingFilter === 'yearly' ? '#0f172a' : '#64748b',
               fontWeight: 700,
               fontSize: 14,
+              border: 'none',
+              cursor: 'pointer',
             }}
           >
-            Business
+            Yearly
           </Box>
         </Stack>
       </Box>
 
       {loading ? (
-        <Box sx={cardSx}>
+        <Box sx={{ ...cardSx, width: '100%', maxWidth: contentMaxWidth }}>
           <Typography sx={{ color: mutedText }}>Loading packages...</Typography>
         </Box>
       ) : null}
 
       {!loading && errorMessage ? (
-        <Box sx={{ ...cardSx, borderColor: '#fecaca', bgcolor: '#fff1f2' }}>
+        <Box
+          sx={{
+            ...cardSx,
+            width: '100%',
+            maxWidth: contentMaxWidth,
+            borderColor: '#fecaca',
+            bgcolor: '#fff1f2',
+          }}
+        >
           <Typography sx={{ color: '#be123c', fontWeight: 600 }}>
             Failed to load billing packages.
           </Typography>
@@ -119,21 +152,25 @@ const SubscriptionPage = () => {
         </Box>
       ) : null}
 
-      {!loading && !errorMessage && sortedPackages.length === 0 ? (
-        <Box sx={cardSx}>
-          <Typography sx={{ color: mutedText }}>No packages available yet.</Typography>
+      {!loading && !errorMessage && visiblePackages.length === 0 ? (
+        <Box sx={{ ...cardSx, width: '100%', maxWidth: contentMaxWidth }}>
+          <Typography sx={{ color: mutedText }}>
+            No {billingFilter === 'monthly' ? 'monthly' : 'yearly'} packages available yet.
+          </Typography>
         </Box>
       ) : null}
 
       <Box
         sx={{
+          width: '100%',
+          maxWidth: contentMaxWidth,
           display: 'grid',
           gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)', xl: 'repeat(4, 1fr)' },
           gap: 2,
         }}
       >
         {!loading && !errorMessage
-          ? sortedPackages.map((pkg) => {
+          ? visiblePackages.map((pkg) => {
               const isInactive = pkg.isActive === false;
               const ctaText = `Get ${pkg.name}`;
               const headerLabel = pkg.isDefault ? 'Recommended' : undefined;
@@ -146,7 +183,7 @@ const SubscriptionPage = () => {
                 borderColor: isInactive ? '#e2e8f0' : borderColor,
                 position: 'relative',
                 overflow: 'hidden',
-                minHeight: 620,
+                minHeight: 540,
                 display: 'flex',
                 flexDirection: 'column',
               }}
@@ -226,21 +263,43 @@ const SubscriptionPage = () => {
                 </Stack>
 
                 <Typography sx={{ color: '#0f172a', fontWeight: 700, mt: 0.75 }}>
-                  {pkg.isDefault ? 'Everything in previous plans and:' : 'Included features:'}
+                  {pkg.isDefault ? 'Most popular plan includes:' : 'Included features:'}
                 </Typography>
-                <Box sx={{ borderTop: `1px solid ${borderColor}` }} />
-                <Stack spacing={1.1} sx={{ pt: 0.25 }}>
+                <Stack spacing={1} sx={{ pt: 0.25 }}>
                   {pkg.features.map((feature) => (
-                    <Box key={feature} sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-                      <CheckRoundedIcon sx={{ color: '#0f172a', fontSize: 18, mt: 0.2 }} />
-                      <Typography sx={{ color: '#0f172a', fontSize: 16 }}>{feature}</Typography>
+                    <Box
+                      key={feature}
+                      sx={{
+                        display: 'flex',
+                        gap: 1.1,
+                        alignItems: 'center',
+                        px: 1.2,
+                        py: 0.9,
+                        borderRadius: 2,
+                        border: '1px solid #e2e8f0',
+                        bgcolor: '#f8fafc',
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          width: 22,
+                          height: 22,
+                          borderRadius: '50%',
+                          display: 'grid',
+                          placeItems: 'center',
+                          bgcolor: '#e2e8f0',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <CheckRoundedIcon sx={{ color: '#0f172a', fontSize: 14 }} />
+                      </Box>
+                      <Typography sx={{ color: '#0f172a', fontSize: 15.5, lineHeight: 1.35 }}>
+                        {feature}
+                      </Typography>
                     </Box>
                   ))}
                 </Stack>
                 <Box sx={{ flexGrow: 1 }} />
-                <Typography sx={{ color: mutedText, fontSize: 13 }}>
-                  Price ID: {pkg.price.stripePriceId || 'N/A'}
-                </Typography>
               </Stack>
             </Box>
           );
