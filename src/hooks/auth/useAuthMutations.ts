@@ -8,7 +8,6 @@ import type {
   VerifyOtpPayload,
 } from '../../types/auth';
 import type { User } from '../../types/user';
-import { authQueryKeys } from './useAuthQueries';
 
 export type ChangePasswordPayload = {
   currentPassword: string;
@@ -135,10 +134,12 @@ export const useLogoutMutation = () => {
   return {
     ...mutation,
     logout: async () => {
-      const result = await mutation.mutateAsync(undefined);
-      await queryClient.cancelQueries({ queryKey: authQueryKeys.me });
-      queryClient.removeQueries({ queryKey: authQueryKeys.me });
-      return result;
+      try {
+        return await mutation.mutateAsync(undefined);
+      } finally {
+        await queryClient.cancelQueries();
+        queryClient.clear();
+      }
     },
     loading: mutation.isPending,
     errorMessage: mutation.error?.message ?? null,
