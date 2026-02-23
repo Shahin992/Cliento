@@ -8,9 +8,10 @@ import { AppHttpError } from '../hooks/useAppQuery';
 
 const RequireAuth = () => {
   const user = useAppSelector((state) => state.auth.user);
+  const shouldLoadMe = !user;
   const dispatch = useAppDispatch();
   const [checking, setChecking] = useState(!user);
-  const { me, loading, error } = useMeQuery(!user);
+  const { me, loading, error } = useMeQuery(shouldLoadMe);
 
   useEffect(() => {
     if (user) {
@@ -33,7 +34,7 @@ const RequireAuth = () => {
     if (!loading && !me && !error) {
       setChecking(false);
     }
-  }, [dispatch, error, loading, me, user]);
+  }, [dispatch, error, loading, me, shouldLoadMe, user]);
 
   if (checking || loading) {
     return (

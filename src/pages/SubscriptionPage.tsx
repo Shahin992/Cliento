@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
-import { Box, Chip, Stack, Typography } from '@mui/material';
+import { Box, Chip, Skeleton, Stack, Typography } from '@mui/material';
 import { Link } from 'react-router-dom';
 
 import PageHeader from '../components/PageHeader';
@@ -21,6 +21,40 @@ const cardSx = {
   px: { xs: 2, sm: 2.25 },
   py: { xs: 2.25, sm: 2.5 },
 };
+
+const PackageCardSkeleton = () => (
+  <Box
+    sx={{
+      ...cardSx,
+      minHeight: 540,
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 1.5,
+    }}
+  >
+    <Stack spacing={1}>
+      <Skeleton variant="text" width="44%" height={34} />
+      <Skeleton variant="text" width="88%" height={24} />
+      <Skeleton variant="text" width="75%" height={24} />
+    </Stack>
+
+    <Skeleton variant="text" width="64%" height={78} sx={{ mt: 0.5 }} />
+    <Skeleton variant="rounded" height={44} sx={{ borderRadius: 999, mt: 0.5 }} />
+
+    <Stack direction="row" spacing={1} sx={{ mt: 0.5 }}>
+      <Skeleton variant="rounded" width={100} height={26} sx={{ borderRadius: 999 }} />
+      <Skeleton variant="rounded" width={90} height={26} sx={{ borderRadius: 999 }} />
+    </Stack>
+
+    <Skeleton variant="text" width="62%" height={28} sx={{ mt: 0.75 }} />
+
+    <Stack spacing={1}>
+      {Array.from({ length: 4 }).map((_, index) => (
+        <Skeleton key={index} variant="rounded" height={42} sx={{ borderRadius: 2 }} />
+      ))}
+    </Stack>
+  </Box>
+);
 
 const SubscriptionPage = () => {
   const { packages, loading, errorMessage } = usePackagesQuery();
@@ -129,12 +163,6 @@ const SubscriptionPage = () => {
         </Stack>
       </Box>
 
-      {loading ? (
-        <Box sx={{ ...cardSx, width: '100%', maxWidth: contentMaxWidth }}>
-          <Typography sx={{ color: mutedText }}>Loading packages...</Typography>
-        </Box>
-      ) : null}
-
       {!loading && errorMessage ? (
         <Box
           sx={{
@@ -169,6 +197,9 @@ const SubscriptionPage = () => {
           gap: 2,
         }}
       >
+        {loading
+          ? Array.from({ length: 4 }).map((_, index) => <PackageCardSkeleton key={index} />)
+          : null}
         {!loading && !errorMessage
           ? visiblePackages.map((pkg) => {
               const isInactive = pkg.isActive === false;

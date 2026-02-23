@@ -6,12 +6,14 @@ import { useAppDispatch, useAppSelector } from '../app/hooks';
 import { clearAuth, setAuth } from '../features/auth/authSlice';
 import { useMeQuery } from '../hooks/auth/useAuthQueries';
 import { AppHttpError } from '../hooks/useAppQuery';
+import { hasActiveAccess } from '../utils/user';
 
 const PublicOnly = () => {
   const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
   const initialized = useAppSelector((state) => state.auth.initialized);
-  const { me, loading, error } = useMeQuery(!user);
+  const shouldLoadMe = !user;
+  const { me, loading, error } = useMeQuery(shouldLoadMe);
 
   useEffect(() => {
     if (user) return;
@@ -26,7 +28,7 @@ const PublicOnly = () => {
     }
   }, [dispatch, error, me, user]);
 
-  if (!initialized || (!user && loading)) {
+  if (!initialized || (shouldLoadMe && loading)) {
     return (
       <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}>
         <CircularProgress size={24} />
@@ -35,7 +37,10 @@ const PublicOnly = () => {
   }
 
   if (user) {
-    return <Navigate to="/dashboard" replace />;
+    const redirectTo = hasActiveAccess(user.accessExpiresAt)
+      ? '/dashboard'
+      : '/settings/subscription';
+    return <Navigate to={redirectTo} replace />;
   }
 
   return <Outlet />;

@@ -10,6 +10,7 @@ import { useAppDispatch } from '../app/hooks';
 import { setAuth } from '../features/auth/authSlice';
 import { useToast } from '../common/ToastProvider';
 import { useSignInMutation } from '../hooks/auth/useAuthMutations';
+import { hasActiveAccess } from '../utils/user';
 
 const accent = '#346fef';
 
@@ -67,7 +68,7 @@ const SignInPage = () => {
       }
 
       dispatch(setAuth({ user }));
-      navigate('/dashboard');
+      navigate(hasActiveAccess(user.accessExpiresAt) ? '/dashboard' : '/settings/subscription');
     } catch (error) {
       const message = error instanceof Error ? error.message : signInErrorMessage || 'Sign in failed. Please try again.';
 
