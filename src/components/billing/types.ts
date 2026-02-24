@@ -1,12 +1,7 @@
-export type PaymentMethodState = {
-  billingEmail: string;
-};
-
 export type PlanDetails = {
   planName: string;
   billingCycle: string;
-  seats: number;
-  pricePerSeat: string;
+  planPrice: string;
   nextBillingDate: string;
   nextInvoiceTotal: string;
   status: string;
@@ -17,8 +12,7 @@ export type PaymentCard = {
   brand: string;
   last4: string;
   expiry: string;
-  holder: string;
-  isDefault: boolean;
+  holder?: string;
 };
 
 export type TransactionItem = {

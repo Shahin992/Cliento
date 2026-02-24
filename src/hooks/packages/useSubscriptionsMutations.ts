@@ -1,4 +1,6 @@
-import { useAppMutation } from '../useAppQuery';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { appHttp, useAppMutation } from '../useAppQuery';
+import { subscriptionQueryKeys } from './useSubscriptionsQueries';
 
 export type SyncCheckoutSessionPayload = {
   sessionId: string;
@@ -15,6 +17,53 @@ export const useSyncCheckoutSessionMutation = () => {
   return {
     ...mutation,
     syncCheckoutSession: (payload: SyncCheckoutSessionPayload) => mutation.mutateAsync(payload),
+    loading: mutation.isPending,
+    errorMessage: mutation.error?.message ?? null,
+  };
+};
+
+type CreateSetupIntentResponse = {
+  clientSecret: string;
+};
+
+type AttachPaymentMethodPayload = {
+  paymentMethodId: string;
+};
+
+export const useCreateSetupIntentMutation = () => {
+  const mutation = useMutation({
+    mutationFn: () =>
+      appHttp<CreateSetupIntentResponse>({
+        method: 'POST',
+        url: '/api/subscriptions/me/setup-intent',
+      }),
+  });
+
+  return {
+    ...mutation,
+    createSetupIntent: () => mutation.mutateAsync(),
+    loading: mutation.isPending,
+    errorMessage: mutation.error?.message ?? null,
+  };
+};
+
+export const useAttachPaymentMethodMutation = () => {
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: (payload: AttachPaymentMethodPayload) =>
+      appHttp<unknown, AttachPaymentMethodPayload>({
+        method: 'POST',
+        url: '/api/subscriptions/me/payment-method',
+        data: payload,
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: subscriptionQueryKeys.current });
+    },
+  });
+
+  return {
+    ...mutation,
+    attachPaymentMethod: (payload: AttachPaymentMethodPayload) => mutation.mutateAsync(payload),
     loading: mutation.isPending,
     errorMessage: mutation.error?.message ?? null,
   };

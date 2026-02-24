@@ -55,20 +55,8 @@ const PlanDetailsSection = ({ plan }: PlanDetailsSectionProps) => (
           py: 1.25,
         }}
       >
-        <Typography sx={{ fontSize: 12, color: mutedText }}>Seats</Typography>
-        <Typography sx={{ fontWeight: 700, color: '#0f172a' }}>{plan.seats}</Typography>
-      </Box>
-      <Box
-        sx={{
-          borderRadius: 2,
-          border: `1px solid ${borderColor}`,
-          backgroundColor: 'white',
-          px: 1.5,
-          py: 1.25,
-        }}
-      >
-        <Typography sx={{ fontSize: 12, color: mutedText }}>Price / Seat</Typography>
-        <Typography sx={{ fontWeight: 700, color: '#0f172a' }}>{plan.pricePerSeat}</Typography>
+        <Typography sx={{ fontSize: 12, color: mutedText }}>Plan Price</Typography>
+        <Typography sx={{ fontWeight: 700, color: '#0f172a' }}>{plan.planPrice}</Typography>
       </Box>
     </Box>
 

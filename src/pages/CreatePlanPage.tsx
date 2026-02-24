@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import { Box, Chip, FormControlLabel, Stack, Switch, Typography } from '@mui/material';
+import StarRoundedIcon from '@mui/icons-material/StarRounded';
 import { Link, useNavigate } from 'react-router-dom';
 
 import PageHeader from '../components/PageHeader';
@@ -505,10 +506,17 @@ const CreatePlanPage = () => {
                 <Chip
                   label={previewPackage.isDefault ? 'Default' : 'Custom'}
                   size="small"
+                  icon={previewPackage.isDefault ? <StarRoundedIcon sx={{ fontSize: '14px !important' }} /> : undefined}
                   sx={{
-                    bgcolor: '#eef2ff',
-                    color: '#3730a3',
+                    px: 0.5,
+                    borderRadius: 999,
+                    border: previewPackage.isDefault ? '1px solid #bfdbfe' : '1px solid #e2e8f0',
+                    bgcolor: previewPackage.isDefault ? '#eff6ff' : '#f8fafc',
+                    color: previewPackage.isDefault ? '#1e3a8a' : '#475569',
                     fontWeight: 700,
+                    '& .MuiChip-icon': {
+                      color: '#1d4ed8',
+                    },
                   }}
                 />
                 <Chip
