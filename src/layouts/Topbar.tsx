@@ -29,7 +29,6 @@ import { CustomButton } from '../common/CustomButton';
 import { useAppSelector } from '../app/hooks';
 import { useAppDispatch } from '../app/hooks';
 import { clearAuth } from '../features/auth/authSlice';
-import { removeCookie } from '../utils/auth';
 import { useLogoutMutation } from '../hooks/auth/useAuthMutations';
 
 interface TopbarProps {
@@ -92,7 +91,6 @@ const Topbar = ({
     try {
       await logout();
     } finally {
-      removeCookie('cliento_token');
       dispatch(clearAuth());
       navigate('/signin', { replace: true });
       handleClose();
