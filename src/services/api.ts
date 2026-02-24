@@ -2,15 +2,42 @@ import axios, {
   type AxiosRequestConfig,
   type AxiosResponse,
   type Method,
+  AxiosHeaders,
 } from 'axios';
 import type { ApiResponse } from '../types/api';
 import { store } from '../app/store';
 import { clearAuth } from '../features/auth/authSlice';
+import { removeCookie } from '../utils/auth';
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_CLINTO_SERVER_BASE_URL ?? 'https://api.example.com',
   timeout: 10000,
   withCredentials: true,
+});
+
+const getCookieValue = (name: string) => {
+  if (typeof document === 'undefined') return undefined;
+  const cookie = document.cookie
+    .split(';')
+    .map((item) => item.trim())
+    .find((item) => item.startsWith(`${name}=`));
+  return cookie ? decodeURIComponent(cookie.split('=')[1]) : undefined;
+};
+
+api.interceptors.request.use((config) => {
+  const token = getCookieValue('cliento_token');
+
+  if (token) {
+    if (config.headers instanceof AxiosHeaders) {
+      config.headers.set('Authorization', `Bearer ${token}`);
+    } else {
+      const headers = AxiosHeaders.from(config.headers ?? {});
+      headers.set('Authorization', `Bearer ${token}`);
+      config.headers = headers;
+    }
+  }
+
+  return config;
 });
 
 export type HttpRequestConfig<TRequest = unknown> = Omit<
@@ -31,6 +58,7 @@ const normalizeError = <TResponse>(
     const data = error.response?.data as Partial<ApiResponse<TResponse>> | undefined;
 
     if (statusCode === 401 || statusCode === 403) {
+      removeCookie('cliento_token');
       store.dispatch(clearAuth());
     }
 
