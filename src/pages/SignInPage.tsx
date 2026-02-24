@@ -11,6 +11,7 @@ import { setAuth } from '../features/auth/authSlice';
 import { useToast } from '../common/ToastProvider';
 import { useSignInMutation } from '../hooks/auth/useAuthMutations';
 import { hasActiveAccess } from '../utils/user';
+import { setAuthTokenCookie } from '../utils/auth';
 
 const accent = '#346fef';
 
@@ -58,8 +59,8 @@ const SignInPage = () => {
     }
 
     try {
-      const user = await signIn(payload);
-      if (!user) {
+      const result = await signIn(payload);
+      if (!result?.user) {
         showToast({
           message: 'Sign in failed. Missing user data.',
           severity: 'error',
@@ -67,8 +68,14 @@ const SignInPage = () => {
         return;
       }
 
-      dispatch(setAuth({ user }));
-      navigate(hasActiveAccess(user.accessExpiresAt) ? '/dashboard' : '/settings/subscription');
+      if (result.token) {
+        setAuthTokenCookie(result.token);
+      }
+
+      dispatch(setAuth({ user: result.user }));
+      navigate(
+        hasActiveAccess(result.user.accessExpiresAt) ? '/dashboard' : '/settings/subscription'
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : signInErrorMessage || 'Sign in failed. Please try again.';
 

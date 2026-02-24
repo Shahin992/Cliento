@@ -7,7 +7,7 @@ import axios, {
 import type { ApiResponse } from '../types/api';
 import { store } from '../app/store';
 import { clearAuth } from '../features/auth/authSlice';
-import { removeCookie } from '../utils/auth';
+import { clearAuthTokenCookie, getAuthTokenFromCookie } from '../utils/auth';
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_CLINTO_SERVER_BASE_URL ?? 'https://api.example.com',
@@ -15,17 +15,8 @@ export const api = axios.create({
   withCredentials: true,
 });
 
-const getCookieValue = (name: string) => {
-  if (typeof document === 'undefined') return undefined;
-  const cookie = document.cookie
-    .split(';')
-    .map((item) => item.trim())
-    .find((item) => item.startsWith(`${name}=`));
-  return cookie ? decodeURIComponent(cookie.split('=')[1]) : undefined;
-};
-
 api.interceptors.request.use((config) => {
-  const token = getCookieValue('cliento_token');
+  const token = getAuthTokenFromCookie();
 
   if (token) {
     if (config.headers instanceof AxiosHeaders) {
@@ -58,7 +49,7 @@ const normalizeError = <TResponse>(
     const data = error.response?.data as Partial<ApiResponse<TResponse>> | undefined;
 
     if (statusCode === 401 || statusCode === 403) {
-      removeCookie('cliento_token');
+      clearAuthTokenCookie();
       store.dispatch(clearAuth());
     }
 

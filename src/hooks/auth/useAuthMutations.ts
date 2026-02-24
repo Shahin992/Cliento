@@ -1,5 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAppMutation, appHttp } from '../useAppQuery';
+import { AppHttpError } from '../useAppQuery';
+import { httpRequest } from '../../services/api';
 import type {
   ForgotPasswordPayload,
   ResetPasswordPayload,
@@ -7,6 +9,7 @@ import type {
   SignUpPayload,
   VerifyOtpPayload,
 } from '../../types/auth';
+import type { ApiResponse } from '../../types/api';
 import type { User } from '../../types/user';
 
 export type ChangePasswordPayload = {
@@ -18,11 +21,36 @@ export type ProfilePhotoPayload = {
   profilePhoto: string;
 };
 
+export type SignInResult = {
+  user: User;
+  token?: string;
+};
+
 export const useSignInMutation = () => {
-  const mutation = useAppMutation<User, SignInPayload>({
-    request: {
-      method: 'POST',
-      url: '/api/auth/signin',
+  const mutation = useMutation<SignInResult, AppHttpError, SignInPayload>({
+    mutationFn: async (payload) => {
+      const response = await httpRequest<User, SignInPayload>({
+        method: 'POST',
+        url: '/api/auth/signin',
+        data: payload,
+      });
+
+      if (!response.success) {
+        throw new AppHttpError(response as ApiResponse<unknown>);
+      }
+
+      if (!response.data) {
+        throw new AppHttpError({
+          success: false,
+          statusCode: response.statusCode || 500,
+          message: response.message || 'Missing user data in sign-in response.',
+        });
+      }
+
+      return {
+        user: response.data,
+        token: response.token,
+      };
     },
   });
 

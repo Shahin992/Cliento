@@ -1,42 +1,41 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { Box, CircularProgress } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../app/hooks';
 import { clearAuth, setAuth } from '../features/auth/authSlice';
 import { useMeQuery } from '../hooks/auth/useAuthQueries';
 import { AppHttpError } from '../hooks/useAppQuery';
+import { getAuthTokenFromCookie } from '../utils/auth';
 
 const RequireAuth = () => {
   const user = useAppSelector((state) => state.auth.user);
-  const shouldLoadMe = !user;
+  const hasToken = Boolean(getAuthTokenFromCookie());
+  const shouldLoadMe = hasToken && !user;
   const dispatch = useAppDispatch();
-  const [checking, setChecking] = useState(!user);
   const { me, loading, error } = useMeQuery(shouldLoadMe);
 
   useEffect(() => {
-    if (user) {
-      setChecking(false);
+    if (!hasToken && user) {
+      dispatch(clearAuth());
       return;
     }
 
     if (me) {
       dispatch(setAuth({ user: me }));
-      setChecking(false);
       return;
     }
 
     if (error instanceof AppHttpError && (error.statusCode === 401 || error.statusCode === 403)) {
       dispatch(clearAuth());
-      setChecking(false);
-      return;
     }
+  }, [dispatch, error, hasToken, me, user]);
 
-    if (!loading && !me && !error) {
-      setChecking(false);
-    }
-  }, [dispatch, error, loading, me, shouldLoadMe, user]);
+  if (!hasToken) {
+    return <Navigate to="/signin" replace />;
+  }
 
-  if (checking || loading) {
+  // Wait for /me and Redux hydration before rendering nested protected routes.
+  if (!user && (loading || Boolean(me))) {
     return (
       <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}>
         <CircularProgress size={24} />
