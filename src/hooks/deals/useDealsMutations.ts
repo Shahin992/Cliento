@@ -32,8 +32,22 @@ type MarkDealLostPayload = {
   lostReason: string;
 };
 
+type MarkDealLostMutationVariables = {
+  payload: MarkDealLostPayload;
+  options?: {
+    skipInvalidate?: boolean;
+  };
+};
+
 type MarkDealWonPayload = {
   dealId: string;
+};
+
+type MarkDealWonMutationVariables = {
+  payload: MarkDealWonPayload;
+  options?: {
+    skipInvalidate?: boolean;
+  };
 };
 
 type DeleteDealPayload = {
@@ -88,20 +102,26 @@ export const useUpdateDealMutation = () => {
 export const useMarkDealLostMutation = () => {
   const queryClient = useQueryClient();
   const mutation = useMutation({
-    mutationFn: (payload: MarkDealLostPayload) =>
+    mutationFn: ({ payload }: MarkDealLostMutationVariables) =>
       appHttp<unknown, MarkDealLostPayload>({
         method: 'POST',
         url: '/api/deals/lost',
         data: payload,
       }),
-    onSuccess: async () => {
+    onSuccess: async (_data, variables) => {
+      if (variables.options?.skipInvalidate) {
+        return;
+      }
       await queryClient.invalidateQueries({ queryKey: dealsQueryKeys.all });
     },
   });
 
   return {
     ...mutation,
-    markDealLost: (payload: MarkDealLostPayload) => mutation.mutateAsync(payload),
+    markDealLost: (
+      payload: MarkDealLostPayload,
+      options?: MarkDealLostMutationVariables['options']
+    ) => mutation.mutateAsync({ payload, options }),
     loading: mutation.isPending,
     errorMessage: mutation.error?.message ?? null,
   };
@@ -110,20 +130,26 @@ export const useMarkDealLostMutation = () => {
 export const useMarkDealWonMutation = () => {
   const queryClient = useQueryClient();
   const mutation = useMutation({
-    mutationFn: (payload: MarkDealWonPayload) =>
+    mutationFn: ({ payload }: MarkDealWonMutationVariables) =>
       appHttp<unknown, MarkDealWonPayload>({
         method: 'POST',
         url: '/api/deals/won',
         data: payload,
       }),
-    onSuccess: async () => {
+    onSuccess: async (_data, variables) => {
+      if (variables.options?.skipInvalidate) {
+        return;
+      }
       await queryClient.invalidateQueries({ queryKey: dealsQueryKeys.all });
     },
   });
 
   return {
     ...mutation,
-    markDealWon: (payload: MarkDealWonPayload) => mutation.mutateAsync(payload),
+    markDealWon: (
+      payload: MarkDealWonPayload,
+      options?: MarkDealWonMutationVariables['options']
+    ) => mutation.mutateAsync({ payload, options }),
     loading: mutation.isPending,
     errorMessage: mutation.error?.message ?? null,
   };

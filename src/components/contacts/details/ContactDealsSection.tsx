@@ -114,8 +114,9 @@ const ContactDealsSection = ({
 
     setWonError(null);
     try {
-      await markDealWon({ dealId: validation.value });
+      await markDealWon({ dealId: validation.value }, { skipInvalidate: true });
       setWonDealId(null);
+      onDealStatusFilterChange('won');
     } catch {
       // Error surfaced from mutation state.
     }
@@ -139,9 +140,10 @@ const ContactDealsSection = ({
       await markDealLost({
         dealId: dealValidation.value,
         lostReason: reasonValidation.value,
-      });
+      }, { skipInvalidate: true });
       setLostDealId(null);
       setLostReason('');
+      onDealStatusFilterChange('lost');
     } catch {
       // Error surfaced from mutation state.
     }

@@ -23,6 +23,7 @@ import { CustomButton } from '../common/CustomButton';
 import ConfirmationAlertModal from '../common/ConfirmationAlertModal';
 import AddDealModal from '../components/deals/modals/AddDealModal';
 import MarkLostDealModal from '../components/deals/modals/MarkLostDealModal';
+import ContactNotesPanel from '../components/deals/details/ContactNotesPanel';
 import type { AddDealInitialData } from '../components/deals/modals/AddDealModal';
 import { validateDealId, validateLostReason } from '../components/deals/modals/lostReasonValidation';
 import { useDealDetailsQuery } from '../hooks/deals/useDealsQueries';
@@ -377,33 +378,14 @@ const DealDetailsPage = () => {
               </Box>
             </Box>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <Box sx={{ border: '1px solid #e7edf6', borderRadius: 3, p: 2 }}>
-                <Typography sx={{ fontWeight: 700, color: '#1f2937', mb: 1.5 }}>
-                  Contact
-                </Typography>
-                <Stack direction="row" spacing={1.25} alignItems="center" mb={1.25}>
-                  <Avatar sx={{ width: 38, height: 38, bgcolor: '#eaf1ff', color: '#1d4ed8', fontWeight: 700 }}>
-                    {getInitials(contactName)}
-                  </Avatar>
-                  <Box>
-                    <Typography sx={{ color: '#0f172a', fontWeight: 700 }}>{contactName}</Typography>
-                    <Typography sx={{ color: '#64748b', fontSize: 12 }}>
-                      {deal.contact?.companyName || 'No company'}
-                    </Typography>
-                  </Box>
-                </Stack>
-                <Divider sx={{ my: 1.25 }} />
-                <Stack spacing={1.1}>
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <EmailOutlined sx={{ fontSize: 16, color: '#64748b' }} />
-                    <Typography sx={{ color: '#334155', fontSize: 13 }}>{contactEmail}</Typography>
-                  </Stack>
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <CallOutlined sx={{ fontSize: 16, color: '#64748b' }} />
-                    <Typography sx={{ color: '#334155', fontSize: 13 }}>{contactPhone}</Typography>
-                  </Stack>
-                </Stack>
-              </Box>
+              <ContactNotesPanel
+                contactId={deal.contact?._id}
+                contactName={contactName}
+                contactEmail={contactEmail}
+                contactPhone={contactPhone}
+                companyName={deal.contact?.companyName}
+                initials={getInitials(contactName)}
+              />
               <Box sx={{ border: '1px solid #e7edf6', borderRadius: 3, p: 2 }}>
                 <Typography sx={{ fontWeight: 700, color: '#1f2937', mb: 1.5 }}>
                   Deal Owner

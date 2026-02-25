@@ -27,6 +27,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import AddContactModal from '../components/contacts/modals/AddContactModal';
 import ContactDealsSection from '../components/contacts/details/ContactDealsSection';
+import ContactNotesSection from '../components/contacts/details/ContactNotesSection';
 import ConfirmationAlertModal from '../common/ConfirmationAlertModal';
 import { useToast } from '../common/ToastProvider';
 import { type ContactDetails } from '../hooks/contacts/contactTypes';
@@ -37,10 +38,11 @@ const borderColor = '#e6eaf1';
 const mutedText = '#7e8796';
 const primary = '#6d28ff';
 
-type ContactTabKey = 'deals' | 'inbox' | 'tasks';
+type ContactTabKey = 'deals' | 'notes' | 'inbox' | 'tasks';
 
 const contactTabs: Array<{ key: ContactTabKey; label: string; enabled: boolean }> = [
   { key: 'deals', label: 'Deals', enabled: true },
+  { key: 'notes', label: 'Notes', enabled: true },
   { key: 'inbox', label: 'Inbox', enabled: false },
   { key: 'tasks', label: 'Tasks', enabled: false },
 ];
@@ -373,6 +375,8 @@ const ContactDetailsPage = () => {
                   onDealStatusFilterChange={setDealStatusFilter}
                   onDealsCountChange={setAssociatedDealsCount}
                 />
+              ) : activeTab === 'notes' ? (
+                <ContactNotesSection contactId={contactId} />
               ) : (
                 <Box sx={{ border: `1px dashed ${borderColor}`, borderRadius: 2, p: 2.5 }}>
                   <Typography sx={{ fontWeight: 700, color: '#111827', textTransform: 'capitalize' }}>
