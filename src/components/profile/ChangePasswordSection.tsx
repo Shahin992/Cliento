@@ -49,6 +49,7 @@ const ChangePasswordSection = ({
             borderRadius: 999,
             px: 2.5,
             textTransform: 'none',
+            minWidth:{xs: 'auto', sm:'170px'},
             width: { xs: '100%', sm: 'auto' },
           }}
           disabled={isSaving || isDisabled}

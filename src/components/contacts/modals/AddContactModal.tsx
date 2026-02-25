@@ -23,6 +23,7 @@ interface AddContactModalProps {
 }
 
 const DEFAULT_AVATAR = '/contact-avatar-placeholder.png';
+const MAX_PHOTO_SIZE_BYTES = 1 * 1024 * 1024;
 
 const labelSx = {
   fontSize: 12,
@@ -193,9 +194,18 @@ const AddContactModal = ({
       return;
     }
 
+    if (file.size > MAX_PHOTO_SIZE_BYTES) {
+      showToast({
+        message: 'Photo size must be 1MB or less.',
+        severity: 'error',
+      });
+      setAvatarFile(null);
+      return;
+    }
+
     try {
       const uploadResponse = await uploadPhoto({ file, folder: 'contacts' });
-      if (!uploadResponse?.url) throw new Error('Photo upload failed.');
+      if (!uploadResponse?.url) return;
       setUploadedPhotoUrl(uploadResponse.url.trim());
     } catch (error) {
       showToast({

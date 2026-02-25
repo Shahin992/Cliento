@@ -42,6 +42,8 @@ const buildProfileState = (user: ProfileState | null): ProfileState => ({
   updatedAt: user?.updatedAt ?? '',
 });
 
+const MAX_PHOTO_SIZE_BYTES = 1 * 1024 * 1024;
+
 const ProfilePage = () => {
 
   const dispatch = useAppDispatch();
@@ -84,6 +86,14 @@ const ProfilePage = () => {
       return;
     }
 
+    if (file.size > MAX_PHOTO_SIZE_BYTES) {
+      showToast({
+        message: 'Photo size must be 1MB or less.',
+        severity: 'error',
+      });
+      return;
+    }
+
     const previousPhoto = profile.profilePhoto;
     const previewUrl = URL.createObjectURL(file);
 
@@ -92,6 +102,7 @@ const ProfilePage = () => {
     try {
       const uploadResponse = await uploadPhoto({ file, folder: 'profile' });
       if (!uploadResponse?.url) {
+        setProfile((prev) => ({ ...prev, profilePhoto: previousPhoto }));
         throw new Error('Upload failed. Please try again.');
       }
       const photoUrl = uploadResponse.url;

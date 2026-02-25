@@ -20,7 +20,7 @@ const RequireAuth = () => {
       return;
     }
 
-    if (me) {
+    if (shouldLoadMe && me) {
       dispatch(setAuth({ user: me }));
       return;
     }
@@ -28,7 +28,7 @@ const RequireAuth = () => {
     if (error instanceof AppHttpError && (error.statusCode === 401 || error.statusCode === 403)) {
       dispatch(clearAuth());
     }
-  }, [dispatch, error, hasToken, me, user]);
+  }, [dispatch, error, hasToken, me, shouldLoadMe, user]);
 
   if (!hasToken) {
     return <Navigate to="/signin" replace />;
