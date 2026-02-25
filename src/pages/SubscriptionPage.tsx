@@ -263,7 +263,7 @@ const SubscriptionPage = () => {
                   disabled={isInactive || !pkg.buyLinkUrl}
                   onClick={() => {
                     if (pkg.buyLinkUrl) {
-                      window.open(pkg.buyLinkUrl, '_blank', 'noopener,noreferrer');
+                      window.location.assign(pkg.buyLinkUrl);
                     }
                   }}
                 >
