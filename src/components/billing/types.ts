@@ -13,6 +13,7 @@ export type PaymentCard = {
   last4: string;
   expiry: string;
   holder?: string;
+  isDefault?: boolean;
 };
 
 export type TransactionItem = {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Box, Skeleton, Stack, Typography } from '@mui/material';
 import { Link } from 'react-router-dom';
 
@@ -33,25 +33,28 @@ const capitalize = (value?: string | null) =>
 const BillingsPage = () => {
   const { currentSubscription, loading, errorMessage } = useCurrentSubscriptionQuery();
 
-  const [cards, setCards] = useState<PaymentCard[]>([]);
+  const cards = useMemo<PaymentCard[]>(() => {
+    if (!currentSubscription) return [];
 
-  useEffect(() => {
-    if (!currentSubscription?.card) {
-      setCards([]);
-      return;
-    }
+    const sourceCards =
+      currentSubscription.cards && currentSubscription.cards.length > 0
+        ? currentSubscription.cards
+        : currentSubscription.card
+          ? [currentSubscription.card]
+          : [];
 
-    const { card } = currentSubscription;
-    const expMonth = String(card.expMonth).padStart(2, '0');
-    const expYear = String(card.expYear).slice(-2);
-    setCards([
-      {
+    return sourceCards.map((card) => {
+      const expMonth = String(card.expMonth).padStart(2, '0');
+      const expYear = String(card.expYear).slice(-2);
+
+      return {
         id: card.paymentMethodId,
         brand: card.brand.charAt(0).toUpperCase() + card.brand.slice(1),
         last4: card.last4,
         expiry: `${expMonth}/${expYear}`,
-      },
-    ]);
+        isDefault: Boolean(card.isDefault),
+      };
+    });
   }, [currentSubscription]);
 
   const planDetails: PlanDetails | null = useMemo(() => {

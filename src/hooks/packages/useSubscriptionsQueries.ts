@@ -6,6 +6,7 @@ type SubscriptionCard = {
   last4: string;
   expMonth: number;
   expYear: number;
+  isDefault?: boolean;
 };
 
 type SubscriptionPackage = {
@@ -30,7 +31,8 @@ export type CurrentSubscription = {
   billingCycle: string;
   cancelAtPeriodEnd: boolean;
   canceledAt: string | null;
-  card: SubscriptionCard | null;
+  card?: SubscriptionCard | null;
+  cards?: SubscriptionCard[];
   createdAt: string;
   currency: string;
   currentPeriodEnd: string | null;
