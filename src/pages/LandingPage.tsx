@@ -8,12 +8,14 @@ import {
   ArrowBackIosNewOutlined,
   ArrowForwardIosOutlined,
 } from '@mui/icons-material';
-import { Box, Container, Stack, Typography } from '@mui/material';
+import { Box, Container, Skeleton, Stack, Typography } from '@mui/material';
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { CustomButton } from '../common/CustomButton';
 import { CustomIconButton as IconButton } from '../common/CustomIconButton';
 import { startStripeCheckout } from '../lib/stripeCheckout';
+import { usePackagesQuery } from '../hooks/packages/usePackagesQueries';
+import { getAuthTokenFromCookie } from '../utils/auth';
 
 const ink = '#0b1220';
 const accent = '#1f6feb';
@@ -106,18 +108,31 @@ const faqs = [
   },
 ];
 
-const pricing = [
-  { name: 'Starter', price: '$12', detail: 'per user / month', cta: 'Get started' },
-  { name: 'Growth', price: '$29', detail: 'per user / month', cta: 'Upgrade now' },
-  { name: 'Scale', price: '$59', detail: 'per user / month', cta: 'Talk to sales' },
-];
-
 const LandingPage = () => {
+  const navigate = useNavigate();
   const [testimonialIndex, setTestimonialIndex] = useState(0);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
   const [checkoutPlanId, setCheckoutPlanId] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const {
+    packages,
+    loading: packagesLoading,
+    errorMessage: packagesErrorMessage,
+  } = usePackagesQuery({
+    planType: null,
+    billingCycle: null,
+  });
   const isStripeMock = import.meta.env.VITE_STRIPE_MOCK === 'true';
+  const pricingPackages = useMemo(
+    () =>
+      [...packages]
+        .sort((a, b) => {
+          if (a.isActive !== b.isActive) return a.isActive === false ? 1 : -1;
+          if (a.isDefault !== b.isDefault) return a.isDefault ? -1 : 1;
+          return (a.price?.amount ?? 0) - (b.price?.amount ?? 0);
+        }),
+    [packages],
+  );
   const visibleTestimonials = useMemo(() => {
     const itemsPerView = 3;
     return Array.from({ length: itemsPerView }, (_, i) =>
@@ -135,12 +150,27 @@ const LandingPage = () => {
     setTestimonialIndex((prev) => (prev + 1) % testimonials.length);
   };
 
-  const handlePricingCheckout = async (planName: string) => {
+  const handlePricingCheckout = async (
+    packageId: string,
+    planId: string,
+    buyLinkUrl?: string,
+  ) => {
+    const hasToken = Boolean(getAuthTokenFromCookie());
+    if (!hasToken) {
+      navigate('/signup');
+      return;
+    }
+
     setCheckoutError(null);
-    setCheckoutPlanId(planName);
+    setCheckoutPlanId(packageId);
     try {
+      if (buyLinkUrl) {
+        window.location.assign(buyLinkUrl);
+        return;
+      }
+
       await startStripeCheckout({
-        planId: planName.toLowerCase(),
+        planId,
         quantity: 1,
         successPath: '/payment/success',
         cancelPath: '/?status=cancel',
@@ -636,34 +666,79 @@ const LandingPage = () => {
               color: '#475569',
             }}
           >
-            Monthly billing
+            {pricingPackages.length} Packages
           </Box>
         </Stack>
 
         <Box
           sx={{
             display: 'grid',
-            gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' },
+            gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)', xl: 'repeat(3, 1fr)' },
             gap: 2.5,
           }}
         >
-          {pricing.map((plan, index) => {
-            const isFeatured = plan.name === 'Growth';
-            const isLoading = checkoutPlanId === plan.name;
+          {packagesLoading
+            ? Array.from({ length: 3 }).map((_, index) => (
+                <Box
+                  key={index}
+                  sx={{
+                    p: 3,
+                    borderRadius: 4,
+                    border: '1px solid #e2e8f0',
+                    backgroundColor: '#ffffff',
+                    minHeight: 440,
+                    display: 'flex',
+                    flexDirection: 'column',
+                  }}
+                >
+                  <Skeleton variant="text" width="48%" height={32} />
+                  <Stack direction="row" spacing={1} alignItems="baseline" sx={{ mt: 0.5 }}>
+                    <Skeleton variant="text" width={110} height={54} />
+                    <Skeleton variant="text" width={90} height={24} />
+                  </Stack>
+                  <Skeleton variant="text" width="85%" height={24} />
+                  <Skeleton variant="text" width="70%" height={24} />
+
+                  <Stack spacing={1.2} sx={{ mt: 2, minHeight: 176 }}>
+                    <Skeleton variant="rounded" height={20} sx={{ borderRadius: 1 }} />
+                    <Skeleton variant="rounded" height={20} sx={{ borderRadius: 1 }} />
+                    <Skeleton variant="rounded" height={20} sx={{ borderRadius: 1 }} />
+                    <Skeleton variant="rounded" height={20} sx={{ borderRadius: 1 }} />
+                  </Stack>
+
+                  <Skeleton
+                    variant="rounded"
+                    height={40}
+                    sx={{ mt: 'auto', borderRadius: 999 }}
+                  />
+                </Box>
+              ))
+            : null}
+
+          {!packagesLoading && !packagesErrorMessage
+            ? pricingPackages.map((plan) => {
+                const isFeatured = plan.isDefault;
+                const isInactive = plan.isActive === false;
+                const isLoading = checkoutPlanId === plan._id;
+                const ctaText = plan.hasTrial ? 'Start Trial' : `Get ${plan.name}`;
+                const priceLabel = `$${plan.price.amount}`;
+                const detailLabel = `${plan.billingCycle} billing`;
+                const stripePlanId = plan.code || plan._id;
+
             return (
               <Box
-                key={plan.name}
+                key={plan._id}
                 sx={{
                   p: 3,
                   borderRadius: 4,
-                  border: isFeatured ? '1px solid #1f6feb' : '1px solid #e2e8f0',
-                  backgroundColor: isFeatured ? '#0f172a' : '#ffffff',
-                  color: isFeatured ? 'white' : ink,
-                  boxShadow: isFeatured
-                    ? '0 24px 60px rgba(15, 23, 42, 0.28)'
-                    : '0 16px 40px rgba(15, 23, 42, 0.08)',
+                  border: isInactive ? '1px solid #e2e8f0' : '1px solid #dbeafe',
+                  backgroundColor: '#ffffff',
+                  color: ink,
+                  boxShadow: '0 16px 40px rgba(15, 23, 42, 0.08)',
                   position: 'relative',
-                  transform: { md: isFeatured ? 'translateY(-10px)' : 'none' },
+                  minHeight: 440,
+                  display: 'flex',
+                  flexDirection: 'column',
                 }}
               >
                 {isFeatured ? (
@@ -684,55 +759,94 @@ const LandingPage = () => {
                     Most popular
                   </Box>
                 ) : null}
+                {isInactive ? (
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      top: isFeatured ? 50 : 16,
+                      right: 16,
+                      px: 1.5,
+                      py: 0.45,
+                      borderRadius: 999,
+                      backgroundColor: '#fef2f2',
+                      color: '#991b1b',
+                      fontWeight: 800,
+                      fontSize: 12,
+                    }}
+                  >
+                    Inactive
+                  </Box>
+                ) : null}
                 <Typography sx={{ fontWeight: 700 }}>{plan.name}</Typography>
                 <Stack direction="row" alignItems="baseline" spacing={1} sx={{ mt: 1 }}>
                   <Typography sx={{ fontWeight: 800, fontSize: 36 }}>
-                    {plan.price}
+                    {priceLabel}
                   </Typography>
                   <Typography
                     variant="caption"
-                    sx={{ color: isFeatured ? 'rgba(255,255,255,0.7)' : '#64748b' }}
+                    sx={{ color: '#64748b' }}
                   >
-                    {plan.detail}
+                    / {detailLabel}
                   </Typography>
                 </Stack>
-                <Stack spacing={1.25} sx={{ mt: 2 }}>
-                  {[
-                    index === 0 ? 'Contacts + tasks' : 'Pipeline automation',
-                    index === 2 ? 'Revenue forecasting' : 'Custom stages',
-                    index === 1 ? 'Team dashboards' : 'Email activity',
-                  ].map((point) => (
-                    <Stack key={point} direction="row" spacing={1} alignItems="center">
-                      <Box
-                        sx={{
-                          width: 8,
-                          height: 8,
-                          borderRadius: '50%',
-                          backgroundColor: isFeatured ? accentWarm : accent,
-                        }}
-                      />
-                      <Typography sx={{ fontWeight: 600 }}>{point}</Typography>
-                    </Stack>
-                  ))}
-                </Stack>
+                <Typography
+                  variant="body2"
+                  sx={{ mt: 1, color: '#64748b' }}
+                >
+                  {plan.description}
+                </Typography>
+                <Box sx={{ mt: 2, minHeight: 176, maxHeight: 176, overflowY: 'auto', pr: 0.5 }}>
+                  <Stack spacing={1.25}>
+                    {plan.features.map((point) => (
+                      <Stack key={point} direction="row" spacing={1} alignItems="center">
+                        <Box
+                          sx={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: '50%',
+                            backgroundColor: accent,
+                          }}
+                        />
+                        <Typography sx={{ fontWeight: 600 }}>{point}</Typography>
+                      </Stack>
+                    ))}
+                  </Stack>
+                </Box>
                 <CustomButton
-                  variant={isFeatured ? 'contained' : 'outlined'}
-                  customColor={isFeatured ? '#ffffff' : accent}
-                  customTextColor={isFeatured ? '#0f172a' : undefined}
-                  onClick={() => handlePricingCheckout(plan.name)}
-                  disabled={isLoading}
+                  variant="contained"
+                  customColor={accent}
+                  customTextColor="#ffffff"
+                  onClick={() => handlePricingCheckout(plan._id, stripePlanId, plan.buyLinkUrl)}
+                  disabled={isLoading || isInactive}
                   sx={{
+                    width: '100%',
                     borderRadius: 999,
-                    mt: 3,
+                    mt: 'auto',
+                    mb: 0.5,
                     textTransform: 'none',
                   }}
                 >
-                  {isLoading ? 'Opening Stripe...' : 'Pay with Stripe (test)'}
+                  {isLoading ? 'Opening checkout...' : ctaText}
                 </CustomButton>
               </Box>
             );
-          })}
+            })
+            : null}
         </Box>
+        {!packagesLoading && packagesErrorMessage ? (
+          <Box sx={{ mt: 3 }}>
+            <Typography sx={{ color: '#b91c1c', fontWeight: 600 }}>
+              {packagesErrorMessage}
+            </Typography>
+          </Box>
+        ) : null}
+        {!packagesLoading && !packagesErrorMessage && pricingPackages.length === 0 ? (
+          <Box sx={{ mt: 3 }}>
+            <Typography sx={{ color: '#64748b', fontWeight: 600 }}>
+              No packages available right now.
+            </Typography>
+          </Box>
+        ) : null}
         {checkoutError ? (
           <Box sx={{ mt: 3 }}>
             <Typography sx={{ color: '#b91c1c', fontWeight: 600 }}>

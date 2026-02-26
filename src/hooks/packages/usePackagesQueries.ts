@@ -48,12 +48,17 @@ export const usePackagesQuery = (filters: PackagesPublicFilters) => {
       url: '/api/packages/public',
       data: filters,
     },
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+    refetchOnWindowFocus: false,
   });
 
   return {
     ...query,
     packages: query.data?.packages ?? [],
-    loading: query.isLoading || query.isFetching,
+    loading: query.isLoading,
     fetching: query.isFetching,
     hasError: query.isError,
     errorMessage: query.error?.message ?? null,
