@@ -27,8 +27,10 @@ const formatDate = (dateValue?: string | null) => {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 };
 
-const capitalize = (value?: string | null) =>
-  value ? `${value.charAt(0).toUpperCase()}${value.slice(1)}` : 'N/A';
+const capitalize = (value?: string | null) => {
+  const normalized = value?.trim();
+  return normalized ? `${normalized?.charAt(0)?.toUpperCase()}${normalized.slice(1)}` : 'N/A';
+};
 
 const BillingsPage = () => {
   const { currentSubscription, loading, errorMessage } = useCurrentSubscriptionQuery();
@@ -46,10 +48,11 @@ const BillingsPage = () => {
     return sourceCards.map((card) => {
       const expMonth = String(card.expMonth).padStart(2, '0');
       const expYear = String(card.expYear).slice(-2);
+      const normalizedBrand = card.brand?.trim();
 
       return {
         id: card.paymentMethodId,
-        brand: card.brand.charAt(0).toUpperCase() + card.brand.slice(1),
+        brand: normalizedBrand ? `${normalizedBrand.charAt(0).toUpperCase()}${normalizedBrand.slice(1)}` : 'Unknown',
         last4: card.last4,
         expiry: `${expMonth}/${expYear}`,
         isDefault: Boolean(card.isDefault),

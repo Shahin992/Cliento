@@ -30,6 +30,10 @@ type AttachPaymentMethodPayload = {
   paymentMethodId: string;
 };
 
+type UpdateCardPayload = {
+  paymentMethodId: string;
+};
+
 export const useCreateSetupIntentMutation = () => {
   const mutation = useMutation({
     mutationFn: () =>
@@ -64,6 +68,50 @@ export const useAttachPaymentMethodMutation = () => {
   return {
     ...mutation,
     attachPaymentMethod: (payload: AttachPaymentMethodPayload) => mutation.mutateAsync(payload),
+    loading: mutation.isPending,
+    errorMessage: mutation.error?.message ?? null,
+  };
+};
+
+export const useMakeDefaultCardMutation = () => {
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: (payload: UpdateCardPayload) =>
+      appHttp<unknown, UpdateCardPayload>({
+        method: 'POST',
+        url: '/api/subscriptions/me/make-default-card',
+        data: payload,
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: subscriptionQueryKeys.current });
+    },
+  });
+
+  return {
+    ...mutation,
+    makeDefaultCard: (payload: UpdateCardPayload) => mutation.mutateAsync(payload),
+    loading: mutation.isPending,
+    errorMessage: mutation.error?.message ?? null,
+  };
+};
+
+export const useRemoveCardMutation = () => {
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: (payload: UpdateCardPayload) =>
+      appHttp<unknown, UpdateCardPayload>({
+        method: 'POST',
+        url: '/api/subscriptions/me/remove-card',
+        data: payload,
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: subscriptionQueryKeys.current });
+    },
+  });
+
+  return {
+    ...mutation,
+    removeCard: (payload: UpdateCardPayload) => mutation.mutateAsync(payload),
     loading: mutation.isPending,
     errorMessage: mutation.error?.message ?? null,
   };
