@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
 import { CustomButton } from '../common/CustomButton';
 import { usePackagesQuery } from '../hooks/packages/usePackagesQueries';
+import { useAppSelector } from '../app/hooks';
 
 const borderColor = '#dbe4f0';
 const mutedText = '#64748b';
@@ -57,8 +58,13 @@ const PackageCardSkeleton = () => (
 );
 
 const SubscriptionPage = () => {
-  const { packages, loading, errorMessage } = usePackagesQuery();
+  const authUser = useAppSelector((state) => state.auth.user);
   const [billingFilter, setBillingFilter] = useState<'monthly' | 'yearly'>('monthly');
+  const { packages, loading, errorMessage } = usePackagesQuery({
+    planType: null,
+    billingCycle: billingFilter,
+  });
+  const isSuperAdmin = authUser?.role?.toUpperCase() === 'SUPER_ADMIN';
 
   const sortedPackages = useMemo(
     () =>
@@ -69,14 +75,7 @@ const SubscriptionPage = () => {
     [packages],
   );
 
-  const visiblePackages = useMemo(() => {
-    return sortedPackages.filter((pkg) => {
-      const cycle = (pkg.billingCycle ?? '').toLowerCase();
-
-      if (billingFilter === 'monthly') return cycle.includes('month');
-      return cycle.includes('year') || cycle.includes('annual');
-    });
-  }, [sortedPackages, billingFilter]);
+  const visiblePackages = sortedPackages;
 
   return (
     <Box
@@ -98,24 +97,19 @@ const SubscriptionPage = () => {
           title="Subscription"
           subtitle="Choose a plan that fits your team"
           action={
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-              <CustomButton
-                variant="outlined"
-                customColor="#94a3b8"
-                sx={{ borderRadius: 999, px: 2.5, textTransform: 'none' }}
-              >
-                Manage Billing
-              </CustomButton>
-              <CustomButton
-                component={Link}
-                to="/settings/subscription/create"
-                variant="contained"
-                customColor={primary}
-                sx={{ borderRadius: 999, px: 2.5, textTransform: 'none' }}
-              >
-                Create Package
-              </CustomButton>
-            </Stack>
+            isSuperAdmin ? (
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                <CustomButton
+                  component={Link}
+                  to="/settings/subscription/create"
+                  variant="contained"
+                  customColor={primary}
+                  sx={{ borderRadius: 999, px: 2.5, textTransform: 'none' }}
+                >
+                  Create Package
+                </CustomButton>
+              </Stack>
+            ) : undefined
           }
         />
       </Box>
@@ -203,7 +197,7 @@ const SubscriptionPage = () => {
         {!loading && !errorMessage
           ? visiblePackages.map((pkg) => {
               const isInactive = pkg.isActive === false;
-              const ctaText = `Get ${pkg.name}`;
+              const ctaText = pkg.hasTrial ? 'Start Trial' : `Get ${pkg.name}`;
               const headerLabel = pkg.isDefault ? 'Recommended' : undefined;
 
           return (

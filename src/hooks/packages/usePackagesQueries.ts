@@ -30,16 +30,23 @@ type BillingPackagesResponse = {
   packages: BillingPackage[];
 };
 
-export const packageQueryKeys = {
-  all: ['packages'] as const,
+type PackagesPublicFilters = {
+  planType: string | null;
+  billingCycle: BillingCycle | null;
 };
 
-export const usePackagesQuery = () => {
+export const packageQueryKeys = {
+  all: ['packages'] as const,
+  public: (filters: PackagesPublicFilters) => ['packages', 'public', filters] as const,
+};
+
+export const usePackagesQuery = (filters: PackagesPublicFilters) => {
   const query = useAppQuery<BillingPackagesResponse>({
-    queryKey: packageQueryKeys.all,
+    queryKey: packageQueryKeys.public(filters),
     request: {
-      method: 'GET',
+      method: 'POST',
       url: '/api/packages/public',
+      data: filters,
     },
   });
 

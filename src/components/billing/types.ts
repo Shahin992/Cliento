@@ -21,4 +21,6 @@ export type TransactionItem = {
   date: string;
   amount: string;
   status: string;
+  description?: string;
+  invoiceUrl?: string | null;
 };

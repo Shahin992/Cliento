@@ -1,17 +1,21 @@
-import { useMemo } from 'react';
-import { Box, Skeleton, Stack, Typography } from '@mui/material';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Box, Skeleton, Stack, Tab, Tabs, Typography } from '@mui/material';
 import { Link } from 'react-router-dom';
+import CreditCardRoundedIcon from '@mui/icons-material/CreditCardRounded';
+import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded';
 
 import PageHeader from '../components/PageHeader';
 import { CustomButton } from '../common/CustomButton';
 import PlanDetailsSection from '../components/billing/PlanDetailsSection';
 import PaymentMethodSection from '../components/billing/PaymentMethodSection';
+import TransactionsSection from '../components/billing/TransactionsSection';
 import GlobalEmptyPage from '../common/GlobalEmptyPage';
-import type {
-  PaymentCard,
-  PlanDetails,
-} from '../components/billing/types';
-import { useCurrentSubscriptionQuery } from '../hooks/packages/useSubscriptionsQueries';
+import type { PaymentCard, PlanDetails, TransactionItem } from '../components/billing/types';
+import {
+  type SubscriptionTransaction,
+  useCurrentSubscriptionQuery,
+  useSubscriptionTransactionsQuery,
+} from '../hooks/packages/useSubscriptionsQueries';
 
 const formatCurrency = (amount: number, currency = 'USD') =>
   new Intl.NumberFormat('en-US', {
@@ -32,8 +36,61 @@ const capitalize = (value?: string | null) => {
   return normalized ? `${normalized?.charAt(0)?.toUpperCase()}${normalized.slice(1)}` : 'N/A';
 };
 
+const getTransactionId = (transaction: SubscriptionTransaction) =>
+  transaction.invoice?.number?.trim() ||
+  transaction.invoice?.id?.trim() ||
+  'Invoice';
+
+const getTransactionInvoiceUrl = (transaction: SubscriptionTransaction) =>
+  transaction.invoice?.invoicePdfUrl?.trim() ||
+  transaction.invoice?.hostedInvoiceUrl?.trim() ||
+  null;
+
+const getTransactionAmount = (transaction: SubscriptionTransaction) => {
+  const rawAmount = transaction.invoice?.amountPaid ?? transaction.invoice?.amountDue ?? 0;
+  return rawAmount / 100;
+};
+
+const formatTransactionStatus = (status?: string | null) => {
+  const normalized = status?.trim();
+  return normalized ? `${normalized.charAt(0).toUpperCase()}${normalized.slice(1)}` : 'Unknown';
+};
+
+const getTransactionPurpose = (transaction: SubscriptionTransaction) => {
+  const planName = transaction.subscription?.packageId?.name?.trim();
+  const cycle = transaction.subscription?.packageId?.billingCycle?.trim();
+
+  if (planName && cycle) {
+    return `${planName} plan (${capitalize(cycle)} billing)`;
+  }
+
+  if (planName) {
+    return `${planName} plan billing`;
+  }
+
+  return 'Subscription billing charge';
+};
+
+type BillingTab = 'billing-info' | 'transactions';
+const TRANSACTIONS_PAGE_SIZE = 10;
+
 const BillingsPage = () => {
+  const [activeTab, setActiveTab] = useState<BillingTab>('billing-info');
+  const [transactionsPage, setTransactionsPage] = useState(1);
+  const [allTransactionItems, setAllTransactionItems] = useState<TransactionItem[]>([]);
+  const [hasMoreTransactions, setHasMoreTransactions] = useState(true);
   const { currentSubscription, loading, errorMessage } = useCurrentSubscriptionQuery();
+  const {
+    transactions,
+    pagination: transactionsPagination,
+    isInitialLoading: isTransactionsInitialLoading,
+    isFetching: isTransactionsFetching,
+    errorMessage: transactionsErrorMessage,
+  } = useSubscriptionTransactionsQuery(
+    transactionsPage,
+    TRANSACTIONS_PAGE_SIZE,
+    activeTab === 'transactions',
+  );
 
   const cards = useMemo<PaymentCard[]>(() => {
     if (!currentSubscription) return [];
@@ -52,7 +109,9 @@ const BillingsPage = () => {
 
       return {
         id: card.paymentMethodId,
-        brand: normalizedBrand ? `${normalizedBrand.charAt(0).toUpperCase()}${normalizedBrand.slice(1)}` : 'Unknown',
+        brand: normalizedBrand
+          ? `${normalizedBrand.charAt(0).toUpperCase()}${normalizedBrand.slice(1)}`
+          : 'Unknown',
         last4: card.last4,
         expiry: `${expMonth}/${expYear}`,
         isDefault: Boolean(card.isDefault),
@@ -75,7 +134,93 @@ const BillingsPage = () => {
     };
   }, [currentSubscription]);
 
+  const transactionItems = useMemo<TransactionItem[]>(
+    () =>
+      transactions.map((item) => ({
+        id: getTransactionId(item),
+        date: formatDate(item.invoice?.createdAt),
+        amount: formatCurrency(
+          getTransactionAmount(item),
+          item.invoice?.currency ?? currentSubscription?.currency ?? 'USD',
+        ),
+        status: formatTransactionStatus(item.invoice?.status),
+        description: getTransactionPurpose(item),
+        invoiceUrl: getTransactionInvoiceUrl(item),
+      })),
+    [currentSubscription?.currency, transactions],
+  );
+
+  useEffect(() => {
+    if (activeTab !== 'transactions') {
+      return;
+    }
+
+    if (transactionsErrorMessage) {
+      return;
+    }
+
+    const hasPaginationNext = Boolean(transactionsPagination?.hasNextPage);
+
+    setHasMoreTransactions(
+      transactionsPagination
+        ? hasPaginationNext
+        : transactionItems.length >= TRANSACTIONS_PAGE_SIZE,
+    );
+
+    setAllTransactionItems((prev) => {
+      if (transactionsPage === 1) {
+        return transactionItems;
+      }
+
+      if (transactionItems.length === 0) {
+        return prev;
+      }
+
+      const next = [...prev];
+      const existingKeys = new Set(prev.map((item) => `${item.id}-${item.date}`));
+
+      for (const item of transactionItems) {
+        const key = `${item.id}-${item.date}`;
+        if (!existingKeys.has(key)) {
+          existingKeys.add(key);
+          next.push(item);
+        }
+      }
+
+      return next;
+    });
+  }, [
+    activeTab,
+    transactionItems,
+    transactionsErrorMessage,
+    transactionsPage,
+    transactionsPagination,
+  ]);
+
+  const handleLoadMoreTransactions = useCallback(() => {
+    if (
+      activeTab !== 'transactions' ||
+      isTransactionsFetching ||
+      !hasMoreTransactions ||
+      Boolean(transactionsErrorMessage)
+    ) {
+      return;
+    }
+
+    setTransactionsPage((prev) => prev + 1);
+  }, [
+    activeTab,
+    hasMoreTransactions,
+    isTransactionsFetching,
+    transactionsErrorMessage,
+  ]);
+
   const estimatedTotal = planDetails?.nextInvoiceTotal ?? '$0.00';
+  const transactionsLoading =
+    transactionsPage === 1 &&
+    allTransactionItems.length === 0 &&
+    (isTransactionsInitialLoading || isTransactionsFetching);
+  const loadingMoreTransactions = isTransactionsFetching && transactionsPage > 1;
 
   const BillingsSkeleton = () => (
     <Stack spacing={2}>
@@ -117,9 +262,105 @@ const BillingsPage = () => {
         }
       />
 
-      {loading ? <BillingsSkeleton /> : null}
+      <Box
+        sx={{
+          width: 'fit-content',
+          borderRadius: 999,
+          p: 0,
+          border: '1px solid #cbd5e1',
+          backgroundColor: '#ffffff',
+          overflow: 'hidden',
+        }}
+      >
+        <Tabs
+          value={activeTab}
+          onChange={(_, value: BillingTab) => setActiveTab(value)}
+          variant="scrollable"
+          scrollButtons={false}
+          sx={{
+            minHeight: 0,
+            '& .MuiTabs-indicator': { display: 'none' },
+            '& .MuiTabs-flexContainer': { gap: 0 },
+          }}
+        >
+          <Tab
+            disableRipple
+            value="billing-info"
+            icon={<CreditCardRoundedIcon sx={{ fontSize: 18 }} />}
+            iconPosition="start"
+            label="Billing Info"
+            sx={{
+              minHeight: 0,
+              minWidth: 0,
+              px: 2.4,
+              py: 1.05,
+              borderRadius: '999px 0 0 999px',
+              textTransform: 'none',
+              fontWeight: 700,
+              color: '#64748b',
+              borderRight: '1px solid #e2e8f0',
+              transition: 'all 180ms ease',
+              '&:hover': {
+                color: '#334155',
+                bgcolor: '#f8fafc',
+              },
+              '&.Mui-selected': {
+                color: '#ffffff',
+                bgcolor: '#2563eb',
+                borderRightColor: '#2563eb',
+                boxShadow: 'none',
+              },
+              '& .MuiTab-iconWrapper': {
+                color: '#94a3b8',
+                transition: 'color 180ms ease',
+              },
+              '&.Mui-selected .MuiTab-iconWrapper': {
+                color: '#ffffff',
+              },
+            }}
+          />
+          <Tab
+            disableRipple
+            value="transactions"
+            icon={<ReceiptLongRoundedIcon sx={{ fontSize: 18 }} />}
+            iconPosition="start"
+            label="Transactions"
+            sx={{
+              minHeight: 0,
+              minWidth: 0,
+              px: 2.4,
+              py: 1.05,
+              borderRadius: '0 999px 999px 0',
+              textTransform: 'none',
+              fontWeight: 700,
+              color: '#64748b',
+              borderLeft: '1px solid #e2e8f0',
+              transition: 'all 180ms ease',
+              '&:hover': {
+                color: '#334155',
+                bgcolor: '#f8fafc',
+              },
+              '&.Mui-selected': {
+                color: '#ffffff',
+                bgcolor: '#2563eb',
+                borderLeftColor: '#2563eb',
+                boxShadow: 'none',
+              },
+              '& .MuiTab-iconWrapper': {
+                color: '#94a3b8',
+                transition: 'color 180ms ease',
+              },
+              '&.Mui-selected .MuiTab-iconWrapper': {
+                color: '#ffffff',
+              },
+            }}
+          />
+        </Tabs>
+      </Box>
 
-      {!loading && errorMessage ? (
+      {activeTab === 'billing-info' && loading ? <BillingsSkeleton /> : null}
+
+      {activeTab === 'billing-info' && !loading && errorMessage ? (
         <Box
           sx={{
             borderRadius: 3,
@@ -135,23 +376,63 @@ const BillingsPage = () => {
         </Box>
       ) : null}
 
-      {!loading && !errorMessage && !currentSubscription ? (
+      {activeTab === 'billing-info' && !loading && !errorMessage && !currentSubscription ? (
         <GlobalEmptyPage message="No active billing subscription found." />
       ) : null}
 
-      {!loading && !errorMessage && currentSubscription && planDetails ? (
-        <>
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: { xs: '1fr', lg: '1.1fr 1fr' },
-              gap: 2,
-            }}
-          >
-            <PlanDetailsSection plan={{ ...planDetails, nextInvoiceTotal: estimatedTotal }} />
-            <PaymentMethodSection cards={cards} />
-          </Box>
-        </>
+      {activeTab === 'billing-info' && !loading && !errorMessage && currentSubscription && planDetails ? (
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', lg: '1.1fr 1fr' },
+            gap: 2,
+          }}
+        >
+          <PlanDetailsSection plan={{ ...planDetails, nextInvoiceTotal: estimatedTotal }} />
+          <PaymentMethodSection cards={cards} />
+        </Box>
+      ) : null}
+
+      {activeTab === 'transactions' && transactionsLoading ? (
+        <Stack spacing={1.25}>
+          <Skeleton variant="rounded" height={104} sx={{ borderRadius: 3 }} />
+          <Skeleton variant="rounded" height={104} sx={{ borderRadius: 3 }} />
+          <Skeleton variant="rounded" height={104} sx={{ borderRadius: 3 }} />
+        </Stack>
+      ) : null}
+
+      {activeTab === 'transactions' && !transactionsLoading && transactionsErrorMessage ? (
+        <Box
+          sx={{
+            borderRadius: 3,
+            border: '1px solid #fecaca',
+            bgcolor: '#fff1f2',
+            p: 2,
+          }}
+        >
+          <Typography sx={{ color: '#be123c', fontWeight: 600 }}>Failed to load transactions.</Typography>
+          <Typography sx={{ color: '#be123c', mt: 0.5 }}>{transactionsErrorMessage}</Typography>
+        </Box>
+      ) : null}
+
+      {activeTab === 'transactions' &&
+      !transactionsLoading &&
+      !isTransactionsFetching &&
+      !transactionsErrorMessage &&
+      allTransactionItems.length === 0 ? (
+        <GlobalEmptyPage message="No transactions found yet." />
+      ) : null}
+
+      {activeTab === 'transactions' &&
+      !transactionsLoading &&
+      !transactionsErrorMessage &&
+      allTransactionItems.length > 0 ? (
+        <TransactionsSection
+          transactions={allTransactionItems}
+          hasMore={hasMoreTransactions}
+          isLoadingMore={loadingMoreTransactions}
+          onLoadMore={handleLoadMoreTransactions}
+        />
       ) : null}
     </Box>
   );
