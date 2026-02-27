@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Avatar,
   Badge,
@@ -8,17 +8,29 @@ import {
   Stack,
   Typography,
 } from '@mui/material';
+import { MuiTelInput } from 'mui-tel-input';
 import PersonAddAltRoundedIcon from '@mui/icons-material/PersonAddAltRounded';
 import GroupRoundedIcon from '@mui/icons-material/GroupRounded';
 import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded';
 import Diversity3RoundedIcon from '@mui/icons-material/Diversity3Rounded';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
+import ManageAccountsOutlinedIcon from '@mui/icons-material/ManageAccountsOutlined';
 
 import PageHeader from '../components/PageHeader';
+import BasicInput from '../common/BasicInput';
+import BasicSelect from '../common/BasicSelect';
+import ConfirmationAlertModal from '../common/ConfirmationAlertModal';
+import CustomModal from '../common/CustomModal';
 import { CustomButton } from '../common/CustomButton';
 import { useToast } from '../common/ToastProvider';
+import { useAppSelector } from '../app/hooks';
 import { type TeamUser, useTeamUsersQuery } from '../hooks/user/useUserQueries';
+import {
+  useCreateUserMutation,
+  useDeleteUserMutation,
+  useUpdateUserMutation,
+} from '../hooks/user/useUserMutations';
 
 const borderColor = '#e7edf6';
 const mutedText = '#8b95a7';
@@ -91,6 +103,26 @@ const getAvatarAccent = (status: UserState) => {
   return { border: '#fda4af', dot: '#e11d48' };
 };
 
+const normalizePhoneToE164 = (value: string) => {
+  let cleaned = value.replace(/[^\d+]/g, '');
+
+  if (cleaned.startsWith('00')) {
+    cleaned = `+${cleaned.slice(2)}`;
+  }
+
+  if (cleaned.startsWith('+')) {
+    cleaned = `+${cleaned.slice(1).replace(/\D/g, '')}`;
+    return cleaned;
+  }
+
+  const digits = cleaned.replace(/\D/g, '');
+  if (digits.length >= 8 && digits.length <= 15) {
+    return `+${digits}`;
+  }
+
+  return digits;
+};
+
 const UserRowSkeleton = () => (
   <Box
     sx={{
@@ -135,9 +167,49 @@ const UserManagementPageSkeleton = () => (
   </Stack>
 );
 
+type UserModalMode = 'create' | 'edit';
+
+type UserFormState = {
+  fullName: string;
+  email: string;
+  role: 'ADMIN' | 'MEMBER';
+  phoneNumber: string;
+};
+
+const emptyUserForm: UserFormState = {
+  fullName: '',
+  email: '',
+  role: 'MEMBER',
+  phoneNumber: '',
+};
+
 const UserManagementPage = () => {
   const { showToast } = useToast();
+  const authUser = useAppSelector((state) => state.auth.user);
   const { teamUsersData, users, loading, errorMessage } = useTeamUsersQuery();
+  const { createUser, loading: creatingUser } = useCreateUserMutation();
+  const { updateUser, loading: updatingUser } = useUpdateUserMutation();
+  const { deleteUser, loading: deletingUser } = useDeleteUserMutation();
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<UserModalMode>('create');
+  const [selectedUser, setSelectedUser] = useState<TeamUser | null>(null);
+  const [deleteCandidate, setDeleteCandidate] = useState<TeamUser | null>(null);
+  const [userForm, setUserForm] = useState<UserFormState>(emptyUserForm);
+
+  const currentUserRole = (authUser?.role ?? '').trim().toUpperCase();
+  const canAssignAdminRole = currentUserRole === 'OWNER';
+  const canManageUserActions = currentUserRole === 'OWNER' || currentUserRole === 'ADMIN';
+
+  const roleOptions = useMemo(
+    () =>
+      canAssignAdminRole
+        ? [
+            { id: 'ADMIN', title: 'Admin' },
+            { id: 'MEMBER', title: 'Member' },
+          ]
+        : [{ id: 'MEMBER', title: 'Member' }],
+    [canAssignAdminRole],
+  );
 
   const summary = useMemo(
     () => ({
@@ -148,6 +220,149 @@ const UserManagementPage = () => {
     }),
     [teamUsersData, users.length],
   );
+
+  const openCreateModal = () => {
+    setModalMode('create');
+    setSelectedUser(null);
+    setUserForm(emptyUserForm);
+    setIsUserModalOpen(true);
+  };
+
+  const openEditModal = (user: TeamUser) => {
+    if (!canManageUserActions) {
+      return;
+    }
+
+    setModalMode('edit');
+    setSelectedUser(user);
+    setUserForm({
+      fullName: user.fullName?.trim() ?? '',
+      email: user.email?.trim() ?? '',
+      role:
+        canAssignAdminRole && user.role?.trim().toUpperCase() === 'ADMIN'
+          ? 'ADMIN'
+          : 'MEMBER',
+      phoneNumber: user.phoneNumber?.trim() ?? '',
+    });
+    setIsUserModalOpen(true);
+  };
+
+  const closeUserModal = () => {
+    if (creatingUser || updatingUser) return;
+    setIsUserModalOpen(false);
+    setSelectedUser(null);
+  };
+
+  const handleSubmitUserModal = async () => {
+    const fullName = userForm.fullName.trim();
+    const email = userForm.email.trim();
+    const phoneNumber = userForm.phoneNumber.trim();
+
+    if (!fullName || !email) {
+      showToast({
+        message: 'Full name and email are required.',
+        severity: 'error',
+      });
+      return;
+    }
+
+    if (!canAssignAdminRole && userForm.role === 'ADMIN') {
+      showToast({
+        message: 'Admin can only create or update users with Member role.',
+        severity: 'error',
+      });
+      return;
+    }
+
+    const selectedUserId = selectedUser?._id?.trim();
+    if (modalMode === 'edit' && !selectedUserId) {
+      showToast({
+        message: 'Unable to update this user.',
+        severity: 'error',
+      });
+      return;
+    }
+
+    try {
+      if (modalMode === 'create') {
+        await createUser({
+          fullName,
+          email,
+          role: userForm.role,
+          ...(phoneNumber ? { phoneNumber } : {}),
+        });
+        showToast({
+          message: 'User created successfully.',
+          severity: 'success',
+        });
+      } else {
+        await updateUser(selectedUserId, {
+          fullName,
+          role: userForm.role,
+          ...(phoneNumber ? { phoneNumber } : {}),
+        });
+        showToast({
+          message: 'User updated successfully.',
+          severity: 'success',
+        });
+      }
+      setIsUserModalOpen(false);
+      setUserForm(emptyUserForm);
+      setSelectedUser(null);
+    } catch (submitError) {
+      showToast({
+        message:
+          submitError instanceof Error
+            ? submitError.message
+            : modalMode === 'create'
+              ? 'Failed to create user.'
+              : 'Failed to update user.',
+        severity: 'error',
+      });
+    }
+  };
+
+  const openDeleteConfirm = (user: TeamUser) => {
+    if (!canManageUserActions) {
+      return;
+    }
+
+    const isOwner = user.role?.trim().toUpperCase() === 'OWNER';
+    const isLoggedInUser = (authUser?._id ?? '').trim() === (user._id ?? '').trim();
+
+    if (isOwner || isLoggedInUser) {
+      return;
+    }
+
+    setDeleteCandidate(user);
+  };
+
+  const closeDeleteConfirm = () => {
+    if (deletingUser) return;
+    setDeleteCandidate(null);
+  };
+
+  const confirmDeleteUser = async () => {
+    const userId = deleteCandidate?._id?.trim();
+    if (!userId) {
+      setDeleteCandidate(null);
+      return;
+    }
+
+    try {
+      await deleteUser(userId);
+      showToast({
+        message: 'User deleted successfully.',
+        severity: 'success',
+      });
+      setDeleteCandidate(null);
+    } catch (submitError) {
+      showToast({
+        message: submitError instanceof Error ? submitError.message : 'Failed to delete user.',
+        severity: 'error',
+      });
+    }
+  };
 
   return (
     <Box
@@ -164,17 +379,12 @@ const UserManagementPage = () => {
     >
       <PageHeader
         title="User Management"
-        subtitle="Team members and seat usage from your subscription."
+        subtitle="Team members and user usage from your subscription."
         action={
           <CustomButton
             variant="contained"
             customColor="#346fef"
-            onClick={() =>
-              showToast({
-                message: 'User invite flow is not connected yet.',
-                severity: 'info',
-              })
-            }
+            onClick={openCreateModal}
             disabled={!summary.canCreateMoreUsers}
             startIcon={<PersonAddAltRoundedIcon sx={{ width: 18, height: 18 }} />}
             sx={{
@@ -200,24 +410,24 @@ const UserManagementPage = () => {
           }}
         >
           {[
-            {
-              label: 'Total Seats',
-              value: summary.totalAllowedUsers,
-              icon: <Diversity3RoundedIcon sx={{ color: '#1d4ed8', fontSize: 19 }} />,
-              bg: '#eff6ff',
-            },
-            {
-              label: 'Used Seats',
-              value: summary.usedUsers,
-              icon: <PeopleAltRoundedIcon sx={{ color: '#0369a1', fontSize: 19 }} />,
-              bg: '#ecfeff',
-            },
-            {
-              label: 'Available Seats',
-              value: summary.remainingUsers,
-              icon: <GroupRoundedIcon sx={{ color: '#166534', fontSize: 19 }} />,
-              bg: '#ecfdf3',
-            },
+          {
+            label: 'Total Users',
+            value: summary.totalAllowedUsers,
+            icon: <Diversity3RoundedIcon sx={{ color: '#1d4ed8', fontSize: 19 }} />,
+            bg: '#eff6ff',
+          },
+          {
+            label: 'Active Users',
+            value: summary.usedUsers,
+            icon: <PeopleAltRoundedIcon sx={{ color: '#0369a1', fontSize: 19 }} />,
+            bg: '#ecfeff',
+          },
+          {
+            label: 'Available Users',
+            value: summary.remainingUsers,
+            icon: <GroupRoundedIcon sx={{ color: '#166534', fontSize: 19 }} />,
+            bg: '#ecfdf3',
+          },
           ].map((item) => (
             <Box
               key={item.label}
@@ -303,6 +513,11 @@ const UserManagementPage = () => {
           {users.map((user) => {
             const status = getUserState(user);
             const avatarAccent = getAvatarAccent(status);
+            const normalizedUserRole = user.role?.trim().toUpperCase() ?? '';
+            const isOwnerUser = normalizedUserRole === 'OWNER';
+            const isLoggedInUser = (authUser?._id ?? '').trim() === (user._id ?? '').trim();
+            const canEditUser = canManageUserActions && !isOwnerUser;
+            const canDeleteUser = canManageUserActions && !isOwnerUser && !isLoggedInUser;
 
             return (
               <Box
@@ -386,53 +601,194 @@ const UserManagementPage = () => {
                   />
                 </Stack>
 
-                <Stack direction={{ xs: 'row', sm: 'row' }} spacing={1} justifyContent={{ xs: 'flex-start', md: 'flex-end' }}>
-                  <CustomButton
-                    variant="outlined"
-                    customColor="#334155"
-                    startIcon={<EditOutlinedIcon sx={{ fontSize: 16 }} />}
-                    sx={{
-                      borderRadius: 999,
-                      textTransform: 'none',
-                      px: 1.6,
-                      fontSize: 12,
-                      minWidth: 0,
-                    }}
-                    onClick={() =>
-                      showToast({
-                        message: `Edit user is not connected yet for ${user.fullName || user.email}.`,
-                        severity: 'info',
-                      })
-                    }
+                {canEditUser || canDeleteUser ? (
+                  <Stack
+                    direction={{ xs: 'row', sm: 'row' }}
+                    spacing={1}
+                    justifyContent={{ xs: 'flex-start', md: 'flex-end' }}
                   >
-                    Edit
-                  </CustomButton>
-                  <CustomButton
-                    variant="outlined"
-                    customColor="#ef4444"
-                    startIcon={<DeleteOutlineOutlinedIcon sx={{ fontSize: 16 }} />}
-                    sx={{
-                      borderRadius: 999,
-                      textTransform: 'none',
-                      px: 1.6,
-                      fontSize: 12,
-                      minWidth: 0,
-                    }}
-                    onClick={() =>
-                      showToast({
-                        message: `Delete user is not connected yet for ${user.fullName || user.email}.`,
-                        severity: 'warning',
-                      })
-                    }
-                  >
-                    Delete
-                  </CustomButton>
-                </Stack>
+                    {canEditUser ? (
+                      <CustomButton
+                        variant="outlined"
+                        customColor="#334155"
+                        startIcon={<EditOutlinedIcon sx={{ fontSize: 16 }} />}
+                        sx={{
+                          borderRadius: 999,
+                          textTransform: 'none',
+                          px: 1.6,
+                          fontSize: 12,
+                          minWidth: 0,
+                        }}
+                        onClick={() => openEditModal(user)}
+                      >
+                        Edit
+                      </CustomButton>
+                    ) : null}
+                    {canDeleteUser ? (
+                      <CustomButton
+                        variant="outlined"
+                        customColor="#ef4444"
+                        startIcon={<DeleteOutlineOutlinedIcon sx={{ fontSize: 16 }} />}
+                        sx={{
+                          borderRadius: 999,
+                          textTransform: 'none',
+                          px: 1.6,
+                          fontSize: 12,
+                          minWidth: 0,
+                        }}
+                        onClick={() => openDeleteConfirm(user)}
+                      >
+                        Delete
+                      </CustomButton>
+                    ) : null}
+                  </Stack>
+                ) : null}
               </Box>
             );
           })}
         </Box>
       ) : null}
+
+      <CustomModal
+        open={isUserModalOpen}
+        handleClose={closeUserModal}
+        handleSubmit={handleSubmitUserModal}
+        title={modalMode === 'create' ? 'Add User' : 'Edit User'}
+        description={
+          modalMode === 'create'
+            ? 'Create a new team user and assign a role.'
+            : `Update ${selectedUser?.fullName || 'user'} details.`
+        }
+        icon={<ManageAccountsOutlinedIcon sx={{ width: 28, height: 28 }} />}
+        submitButtonText={
+          modalMode === 'create'
+            ? creatingUser
+              ? 'Adding...'
+              : 'Add User'
+            : updatingUser
+              ? 'Saving...'
+              : 'Save Changes'
+        }
+        submitDisabled={(creatingUser || updatingUser) || !userForm.fullName.trim() || !userForm.email.trim()}
+      >
+        <Stack spacing={2}>
+          <Box>
+            <Typography sx={{ fontWeight: 600, mb: 0.5 }}>Full name</Typography>
+            <BasicInput
+              fullWidth
+              placeholder="John Doe"
+              value={userForm.fullName}
+              onChange={(event) =>
+                setUserForm((prev) => ({ ...prev, fullName: event.target.value }))
+              }
+            />
+          </Box>
+
+          <Box>
+            <Typography sx={{ fontWeight: 600, mb: 0.5 }}>Email</Typography>
+            <BasicInput
+              fullWidth
+              type="email"
+              placeholder="john@example.com"
+              value={userForm.email}
+              disabled={modalMode === 'edit'}
+              onChange={(event) =>
+                setUserForm((prev) => ({ ...prev, email: event.target.value }))
+              }
+            />
+          </Box>
+
+          <Box>
+            <Typography sx={{ fontWeight: 600, mb: 0.5 }}>Role</Typography>
+            <BasicSelect
+              options={roleOptions}
+              mapping={{ label: 'title', value: 'id' }}
+              value={userForm.role}
+              disabled={!canAssignAdminRole}
+              onChange={(event) =>
+                setUserForm((prev) => ({
+                  ...prev,
+                  role:
+                    canAssignAdminRole && event.target.value === 'ADMIN'
+                      ? 'ADMIN'
+                      : 'MEMBER',
+                }))
+              }
+            />
+          </Box>
+
+          <Box>
+            <Typography sx={{ fontWeight: 600, mb: 0.5 }}>Phone number (optional)</Typography>
+            <MuiTelInput
+              defaultCountry="US"
+              fullWidth
+              value={userForm.phoneNumber}
+              onChange={(value) =>
+                setUserForm((prev) => ({ ...prev, phoneNumber: value.replace(/[^\d+]/g, '') }))
+              }
+              onBlur={() =>
+                setUserForm((prev) => ({
+                  ...prev,
+                  phoneNumber: normalizePhoneToE164(prev.phoneNumber),
+                }))
+              }
+              size="small"
+              variant="outlined"
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: 'white',
+                  borderRadius: '4px',
+                  '& fieldset': {
+                    borderColor: '#ced4da',
+                  },
+                  '&:hover fieldset': {
+                    borderColor: '#ced4da',
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: '#ced4da',
+                    boxShadow: 'none',
+                  },
+                },
+                '& .MuiOutlinedInput-input': {
+                  fontSize: 15,
+                },
+                '& .MuiInputAdornment-positionStart .MuiButtonBase-root': {
+                  borderRadius: '4px',
+                  border: 'none',
+                  boxShadow: 'none',
+                  backgroundColor: 'transparent',
+                },
+                '& .MuiInputAdornment-positionStart .MuiButtonBase-root:hover': {
+                  backgroundColor: 'transparent',
+                },
+                '& .MuiInputAdornment-positionStart .MuiButtonBase-root:focus': {
+                  backgroundColor: 'transparent',
+                },
+                '& .MuiInputAdornment-positionStart .MuiButtonBase-root:focus-visible': {
+                  outline: 'none',
+                },
+              }}
+            />
+          </Box>
+
+        </Stack>
+      </CustomModal>
+
+      <ConfirmationAlertModal
+        open={Boolean(deleteCandidate)}
+        variant="delete"
+        title="Delete user?"
+        message={
+          deleteCandidate
+            ? `${deleteCandidate.fullName || deleteCandidate.email} will be removed from your team. This action cannot be undone.`
+            : 'This action cannot be undone.'
+        }
+        confirmText="Delete"
+        cancelText="Cancel"
+        isConfirmLoading={deletingUser}
+        onClose={closeDeleteConfirm}
+        onConfirm={confirmDeleteUser}
+      />
     </Box>
   );
 };
