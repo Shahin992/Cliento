@@ -255,7 +255,12 @@ const BillingsPage = () => {
             to="/settings/subscription"
             variant="outlined"
             customColor="#94a3b8"
-            sx={{ borderRadius: 999, px: 2.5, textTransform: 'none' }}
+            sx={{
+              borderRadius: 999,
+              px: 2.5,
+              textTransform: 'none',
+              width: { xs: '100%', sm: 'auto' },
+            }}
           >
             Manage Subscription
           </CustomButton>
@@ -264,7 +269,7 @@ const BillingsPage = () => {
 
       <Box
         sx={{
-          width: 'fit-content',
+          width: { xs: '100%', sm: 'fit-content' },
           borderRadius: 999,
           p: 0,
           border: '1px solid #cbd5e1',
@@ -280,7 +285,10 @@ const BillingsPage = () => {
           sx={{
             minHeight: 0,
             '& .MuiTabs-indicator': { display: 'none' },
-            '& .MuiTabs-flexContainer': { gap: 0 },
+            '& .MuiTabs-flexContainer': {
+              gap: 0,
+              width: { xs: '100%', sm: 'auto' },
+            },
           }}
         >
           <Tab
@@ -291,11 +299,12 @@ const BillingsPage = () => {
             label="Billing Info"
             sx={{
               minHeight: 0,
-              minWidth: 0,
-              px: 2.4,
+              minWidth: { xs: '50%', sm: 0 },
+              px: { xs: 1.5, sm: 2.4 },
               py: 1.05,
               borderRadius: '999px 0 0 999px',
               textTransform: 'none',
+              fontSize: { xs: 12.5, sm: 14 },
               fontWeight: 700,
               color: '#64748b',
               borderRight: '1px solid #e2e8f0',
@@ -327,11 +336,12 @@ const BillingsPage = () => {
             label="Transactions"
             sx={{
               minHeight: 0,
-              minWidth: 0,
-              px: 2.4,
+              minWidth: { xs: '50%', sm: 0 },
+              px: { xs: 1.5, sm: 2.4 },
               py: 1.05,
               borderRadius: '0 999px 999px 0',
               textTransform: 'none',
+              fontSize: { xs: 12.5, sm: 14 },
               fontWeight: 700,
               color: '#64748b',
               borderLeft: '1px solid #e2e8f0',

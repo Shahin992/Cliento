@@ -418,14 +418,16 @@ const DealDetailsPage = () => {
         </Box>
       </Box>
 
-      <AddDealModal
+      {isEditOpen && (
+        <AddDealModal
         open={isEditOpen}
         onClose={() => setIsEditOpen(false)}
         onSave={() => setIsEditOpen(false)}
         initialDeal={editInitialDeal}
-      />
+      />)}
 
-      <ConfirmationAlertModal
+      {wonConfirmOpen && (
+        <ConfirmationAlertModal
         open={wonConfirmOpen}
         variant="warning"
         title="Mark deal as won?"
@@ -439,8 +441,10 @@ const DealDetailsPage = () => {
         }}
         onConfirm={handleConfirmWon}
       />
+      )}
 
-      <MarkLostDealModal
+      {isLostModalOpen && (
+        <MarkLostDealModal
         open={isLostModalOpen}
         lostReason={lostReason}
         onLostReasonChange={(value) => {
@@ -456,6 +460,7 @@ const DealDetailsPage = () => {
         submitDisabled={markingLost}
         errorMessage={lostError ?? markLostErrorMessage}
       />
+      )}
     </Box>
   );
 };

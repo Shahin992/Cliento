@@ -242,7 +242,7 @@ const ContactNotesPanel = ({
               cursor: 'pointer',
             }}
           >
-            Notes ({notesCountLabel})
+            Notes
           </Box>
         </Stack>
 
