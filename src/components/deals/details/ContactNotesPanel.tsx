@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Box, Stack, Typography } from '@mui/material';
 import { AddOutlined } from '@mui/icons-material';
 
@@ -175,8 +175,6 @@ const ContactNotesPanel = ({
       });
     }
   };
-
-  const notesCountLabel = useMemo(() => (canManageNotes ? String(notes.length) : '0'), [canManageNotes, notes.length]);
 
   return (
     <>
