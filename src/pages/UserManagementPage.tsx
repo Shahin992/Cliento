@@ -296,6 +296,9 @@ const UserManagementPage = () => {
           severity: 'success',
         });
       } else {
+        if (!selectedUserId) {
+          return;
+        }
         await updateUser(selectedUserId, {
           fullName,
           role: userForm.role,
