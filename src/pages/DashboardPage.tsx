@@ -1,87 +1,94 @@
-import { Box } from '@mui/material';
-
 import {
-  ActivityCard,
-  ContactsCard,
-  NextAppointmentCard,
-  RecentDealsCard,
-  StatCard,
-  TasksCard,
-} from '../components/dashboard';
+  Box,
+  Button,
+  Stack,
+  Typography,
+} from '@mui/material';
 
-const DashboardPage = () => (
-  <Box
-    sx={{
-      width: '100%',
-      maxWidth: '100%',
-      px: { xs: 1.5, sm: 2, md: 3 },
-      pb: 4,
-      minHeight: { xs: 'calc(100vh - 96px)', sm: 'calc(100vh - 110px)' },
-      display: 'flex',
-    }}
-  >
+import PageHeader from '../components/PageHeader';
+import DashboardCard from '../components/dashboard-page/DashboardCard';
+import DashboardLoadingState from '../components/dashboard-page/DashboardLoadingState';
+import DashboardMetricCardsSection from '../components/dashboard-page/DashboardMetricCardsSection';
+import DashboardOverviewSection from '../components/dashboard-page/DashboardOverviewSection';
+import DashboardRecentSections from '../components/dashboard-page/DashboardRecentSections';
+import DashboardWonLostSection from '../components/dashboard-page/DashboardWonLostSection';
+import {
+  useDashboardOverviewQuery,
+} from '../hooks/dashboard/useDashboardQueries';
+import { pageBg, mutedText } from '../components/dashboard-page/shared';
+
+const DashboardPage = () => {
+  const { summary, recentDeals, recentContacts, recentTasks, loading, hasError, errorMessage, refetch } =
+    useDashboardOverviewQuery();
+
+  const dealSummary = summary?.deals ?? { total: 0, open: 0, won: 0, lost: 0 };
+  const contactSummary = summary?.contacts ?? { total: 0 };
+  const wonThisMonth = summary?.wonThisMonth ?? { count: 0, amount: 0 };
+  const comparison = summary?.wonLostComparison ?? {
+    wonCount: 0,
+    lostCount: 0,
+    wonAmount: 0,
+    lostAmount: 0,
+    winRate: 0,
+  };
+  const pipelineValue = comparison.wonAmount + comparison.lostAmount;
+
+  return (
     <Box
       sx={{
-        display: 'grid',
-        gridTemplateColumns: {
-          xs: '1fr',
-          md: 'minmax(240px, 1fr) minmax(360px, 2fr) minmax(280px, 1fr)',
-        },
-        gap: { xs: 2, md: 2.5 },
         width: '100%',
-        height: '100%',
-        minHeight: '100%',
-        alignItems: 'stretch',
-        alignContent: 'stretch',
+        maxWidth: '100%',
+        px: { xs: 1.5, sm: 2, md: 3 },
+        pb: 4,
+        minHeight: { xs: 'calc(100vh - 96px)', sm: 'calc(100vh - 110px)' },
+        background: pageBg,
       }}
     >
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 2,
-          minWidth: 0,
-          height: '100%',
-          alignSelf: 'stretch',
-          justifyContent: { xs: 'flex-start' },
-        }}
-      >
-        <NextAppointmentCard />
-        <StatCard label="Contacts" value="78" color="#34d399" />
-        <StatCard label="Deals" value="136" color="#f97316" />
-      </Box>
+      <PageHeader title="Dashboard" subtitle="Minimal overview of pipeline and recent activity." />
 
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 2,
-          minWidth: 0,
-          height: '100%',
-          alignSelf: 'stretch',
-          justifyContent: { xs: 'flex-start' },
-        }}
-      >
-        <RecentDealsCard />
-        <ActivityCard />
-      </Box>
-
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 2,
-          minWidth: 0,
-          height: '100%',
-          alignSelf: 'stretch',
-          justifyContent: { xs: 'flex-start', md: 'space-between' },
-        }}
-      >
-        <ContactsCard />
-        <TasksCard />
-      </Box>
+      {loading ? (
+        <DashboardLoadingState />
+      ) : hasError ? (
+        <DashboardCard
+          sx={{
+            background: 'linear-gradient(180deg, rgba(248,250,252,0.92) 0%, rgba(255,255,255,0.76) 100%)',
+          }}
+        >
+          <Typography variant="h6" sx={{ fontWeight: 700, color: '#0f172a' }}>
+            Dashboard unavailable
+          </Typography>
+          <Box sx={{ mt: 2 }}>
+          <Stack spacing={2}>
+            <Typography variant="body2" sx={{ color: mutedText }}>
+              {errorMessage || 'Failed to load overview data.'}
+            </Typography>
+            <Box>
+              <Button variant="contained" onClick={() => void refetch()} sx={{ textTransform: 'none' }}>
+                Try again
+              </Button>
+            </Box>
+          </Stack>
+          </Box>
+        </DashboardCard>
+      ) : (
+        <Stack spacing={2}>
+          <DashboardOverviewSection pipelineValue={pipelineValue} dealSummary={dealSummary} />
+          <DashboardMetricCardsSection
+            dealSummary={dealSummary}
+            wonThisMonth={wonThisMonth}
+            contactSummary={contactSummary}
+            recentTasksCount={recentTasks.length}
+          />
+          <DashboardWonLostSection comparison={comparison} wonThisMonth={wonThisMonth} />
+          <DashboardRecentSections
+            recentDeals={recentDeals}
+            recentContacts={recentContacts}
+            recentTasks={recentTasks}
+          />
+        </Stack>
+      )}
     </Box>
-  </Box>
-);
+  );
+};
 
 export default DashboardPage;
