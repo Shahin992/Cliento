@@ -3,6 +3,9 @@ import { Box, Divider, LinearProgress, Stack, Typography } from '@mui/material';
 import DashboardCard from './DashboardCard';
 import { formatCurrency, mutedText, normalizeRate, textColor } from './shared';
 
+const wonChartColor = '#2563eb';
+const lostChartColor = '#f59e0b';
+
 type DashboardWonLostSectionProps = {
   comparison: {
     wonCount: number;
@@ -42,18 +45,18 @@ const DashboardWonLostSection = ({
         <Box sx={{ display: 'grid', placeItems: 'center' }}>
           <Box
             sx={{
-              width: 170,
-              height: 170,
+              width: { xs: 164, sm: 196 },
+              height: { xs: 164, sm: 196 },
               borderRadius: '50%',
               display: 'grid',
               placeItems: 'center',
-              background: `conic-gradient(#027a48 0 ${winRate}%, #f04438 ${winRate}% 100%)`,
+              background: `conic-gradient(${wonChartColor} 0 ${winRate}%, ${lostChartColor} ${winRate}% 100%)`,
             }}
           >
             <Box
               sx={{
-                width: 122,
-                height: 122,
+                width: { xs: 102, sm: 120 },
+                height: { xs: 102, sm: 120 },
                 borderRadius: '50%',
                 bgcolor: '#fff',
                 display: 'grid',
@@ -62,7 +65,9 @@ const DashboardWonLostSection = ({
               }}
             >
               <Box>
-                <Typography variant="h4" sx={{ fontWeight: 700, color: textColor }}>
+                <Typography
+                  sx={{ fontWeight: 700, color: textColor, fontSize: { xs: '1.65rem', sm: '2.125rem' } }}
+                >
                   {winRate.toFixed(0)}%
                 </Typography>
                 <Typography variant="caption" sx={{ color: mutedText }}>
@@ -91,7 +96,7 @@ const DashboardWonLostSection = ({
                 height: 8,
                 borderRadius: 999,
                 bgcolor: '#e2e8f0',
-                '& .MuiLinearProgress-bar': { bgcolor: '#027a48', borderRadius: 999 },
+                '& .MuiLinearProgress-bar': { bgcolor: wonChartColor, borderRadius: 999 },
               }}
             />
           </Box>
@@ -113,7 +118,7 @@ const DashboardWonLostSection = ({
                 height: 8,
                 borderRadius: 999,
                 bgcolor: '#e2e8f0',
-                '& .MuiLinearProgress-bar': { bgcolor: '#f04438', borderRadius: 999 },
+                '& .MuiLinearProgress-bar': { bgcolor: lostChartColor, borderRadius: 999 },
               }}
             />
           </Box>
@@ -131,7 +136,7 @@ const DashboardWonLostSection = ({
               <Typography variant="caption" sx={{ color: mutedText, textTransform: 'uppercase' }}>
                 Won value
               </Typography>
-              <Typography variant="h6" sx={{ mt: 0.75, fontWeight: 700, color: textColor }}>
+              <Typography sx={{ mt: 0.75, fontWeight: 700, color: textColor, fontSize: { xs: '1.1rem', sm: '1.25rem' } }}>
                 {formatCurrency(comparison.wonAmount)}
               </Typography>
             </Box>
@@ -139,7 +144,7 @@ const DashboardWonLostSection = ({
               <Typography variant="caption" sx={{ color: mutedText, textTransform: 'uppercase' }}>
                 Lost value
               </Typography>
-              <Typography variant="h6" sx={{ mt: 0.75, fontWeight: 700, color: textColor }}>
+              <Typography sx={{ mt: 0.75, fontWeight: 700, color: textColor, fontSize: { xs: '1.1rem', sm: '1.25rem' } }}>
                 {formatCurrency(comparison.lostAmount)}
               </Typography>
             </Box>
@@ -147,7 +152,7 @@ const DashboardWonLostSection = ({
               <Typography variant="caption" sx={{ color: mutedText, textTransform: 'uppercase' }}>
                 Won this month
               </Typography>
-              <Typography variant="h6" sx={{ mt: 0.75, fontWeight: 700, color: textColor }}>
+              <Typography sx={{ mt: 0.75, fontWeight: 700, color: textColor, fontSize: { xs: '1.1rem', sm: '1.25rem' } }}>
                 {formatCurrency(wonThisMonth.amount)}
               </Typography>
             </Box>

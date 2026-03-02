@@ -64,12 +64,21 @@ const DashboardOverviewSection = ({
           sx={{
             color: 'rgba(255,255,255,0.72)',
             textTransform: 'uppercase',
-            letterSpacing: 1.4,
+            letterSpacing: { xs: 1.1, sm: 1.4 },
           }}
         >
           Deal value
         </Typography>
-        <Typography variant="h3" sx={{ mt: 1, fontWeight: 700, color: 'white' }}>
+        <Typography
+          sx={{
+            mt: 1,
+            fontWeight: 700,
+            color: 'white',
+            fontSize: { xs: '2rem', sm: '3rem' },
+            lineHeight: 1.05,
+            wordBreak: 'break-word',
+          }}
+        >
           {formatCurrency(pipelineValue)}
         </Typography>
         <Typography variant="body2" sx={{ mt: 1, color: 'rgba(255,255,255,0.72)' }}>

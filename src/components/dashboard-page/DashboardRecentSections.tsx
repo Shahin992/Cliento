@@ -121,8 +121,8 @@ const RecentDealRow = ({ deal }: { deal: DashboardRecentDeal }) => {
 
   return (
     <Stack
-      direction="row"
-      alignItems="center"
+      direction={{ xs: 'column', sm: 'row' }}
+      alignItems={{ xs: 'stretch', sm: 'center' }}
       justifyContent="space-between"
       spacing={1.5}
       sx={{
@@ -132,7 +132,7 @@ const RecentDealRow = ({ deal }: { deal: DashboardRecentDeal }) => {
         border: `1px solid ${borderColor}`,
       }}
     >
-      <Stack direction="row" spacing={1.25} alignItems="center" sx={{ minWidth: 0 }}>
+      <Stack direction="row" spacing={1.25} alignItems="center" sx={{ minWidth: 0, width: '100%' }}>
         <Avatar sx={{ width: 40, height: 40, bgcolor: '#dbeafe', color: '#1d4ed8', fontWeight: 700 }}>
           {getInitials(deal.title)}
         </Avatar>
@@ -154,7 +154,11 @@ const RecentDealRow = ({ deal }: { deal: DashboardRecentDeal }) => {
           </Stack>
         </Box>
       </Stack>
-      <Stack alignItems="flex-end" spacing={0.5} sx={{ flexShrink: 0 }}>
+      <Stack
+        alignItems={{ xs: 'flex-start', sm: 'flex-end' }}
+        spacing={0.5}
+        sx={{ flexShrink: 0, width: { xs: '100%', sm: 'auto' } }}
+      >
         <Typography variant="body2" sx={{ fontWeight: 700, color: textColor }}>
           {formatCurrency(deal.amount)}
         </Typography>
@@ -166,8 +170,8 @@ const RecentDealRow = ({ deal }: { deal: DashboardRecentDeal }) => {
 
 const RecentContactRow = ({ contact }: { contact: DashboardRecentContact }) => (
   <Stack
-    direction="row"
-    alignItems="center"
+    direction={{ xs: 'column', sm: 'row' }}
+    alignItems={{ xs: 'stretch', sm: 'center' }}
     justifyContent="space-between"
     spacing={1.5}
     sx={{
@@ -177,7 +181,7 @@ const RecentContactRow = ({ contact }: { contact: DashboardRecentContact }) => (
       border: `1px solid ${borderColor}`,
     }}
   >
-    <Stack direction="row" spacing={1.25} alignItems="center" sx={{ minWidth: 0 }}>
+    <Stack direction="row" spacing={1.25} alignItems="center" sx={{ minWidth: 0, width: '100%' }}>
       <Avatar src={contact.photoUrl ?? undefined} sx={{ width: 40, height: 40 }}>
         {getInitials(contact.name)}
       </Avatar>
@@ -193,7 +197,7 @@ const RecentContactRow = ({ contact }: { contact: DashboardRecentContact }) => (
         </Typography>
       </Box>
     </Stack>
-    <Typography variant="caption" sx={{ color: mutedText, flexShrink: 0 }}>
+    <Typography variant="caption" sx={{ color: mutedText, flexShrink: 0, pl: { xs: 6.25, sm: 0 } }}>
       {formatDate(contact.createdAt)}
     </Typography>
   </Stack>
@@ -213,7 +217,7 @@ const RecentTaskRow = ({ task }: { task: DashboardRecentTask }) => {
       }}
     >
       <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
-        <Typography variant="body2" sx={{ fontWeight: 600, color: textColor }}>
+        <Typography variant="body2" sx={{ fontWeight: 600, color: textColor, pr: 1 }}>
           {task.title || 'Untitled task'}
         </Typography>
         <Chip label={tone.label} size="small" sx={{ bgcolor: tone.bg, color: tone.color, fontWeight: 700 }} />

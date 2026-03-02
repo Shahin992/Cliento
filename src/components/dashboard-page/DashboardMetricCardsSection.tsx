@@ -36,20 +36,35 @@ const MetricCard = ({
     }}
   >
     <Stack spacing={1.5}>
-      <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={1.5}>
-        <Box>
+      <Stack
+        direction="row"
+        alignItems="flex-start"
+        justifyContent="space-between"
+        spacing={1.5}
+        sx={{ minWidth: 0 }}
+      >
+        <Box sx={{ minWidth: 0, flex: 1 }}>
           <Typography variant="caption" sx={{ color: mutedText, textTransform: 'uppercase' }}>
             {label}
           </Typography>
-          <Typography variant="h4" sx={{ mt: 1, fontWeight: 700, color: textColor }}>
+          <Typography
+            sx={{
+              mt: 1,
+              fontWeight: 700,
+              color: textColor,
+              fontSize: { xs: '1.75rem', sm: '2.125rem' },
+              lineHeight: 1.1,
+              wordBreak: 'break-word',
+            }}
+          >
             {value}
           </Typography>
         </Box>
         <Box
           sx={{
-            width: 42,
-            height: 42,
-            borderRadius: 3,
+            width: { xs: 38, sm: 42 },
+            height: { xs: 38, sm: 42 },
+            borderRadius: { xs: 2.5, sm: 3 },
             display: 'grid',
             placeItems: 'center',
             bgcolor: iconBg,
@@ -83,7 +98,7 @@ const DashboardMetricCardsSection = ({
   <Box
     sx={{
       display: 'grid',
-      gridTemplateColumns: { xs: 'repeat(2, 1fr)', xl: 'repeat(4, 1fr)' },
+      gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', xl: 'repeat(4, 1fr)' },
       gap: 2,
     }}
   >
