@@ -77,40 +77,40 @@ const PipelineRowSkeleton = () => (
   </Box>
 );
 
-const MetricCard = ({
-  title,
-  value,
-  tone,
-}: {
-  title: string;
-  value: number;
-  tone: 'blue' | 'green' | 'orange';
-}) => {
-  const palette = {
-    blue: { bg: '#eef4ff', text: '#1d4ed8', border: '#bfd3ff' },
-    green: { bg: '#ecfdf3', text: '#047857', border: '#b7e9d1' },
-    orange: { bg: '#fff7ed', text: '#c2410c', border: '#ffd3ad' },
-  }[tone];
+// const MetricCard = ({
+//   title,
+//   value,
+//   tone,
+// }: {
+//   title: string;
+//   value: number;
+//   tone: 'blue' | 'green' | 'orange';
+// }) => {
+//   const palette = {
+//     blue: { bg: '#eef4ff', text: '#1d4ed8', border: '#bfd3ff' },
+//     green: { bg: '#ecfdf3', text: '#047857', border: '#b7e9d1' },
+//     orange: { bg: '#fff7ed', text: '#c2410c', border: '#ffd3ad' },
+//   }[tone];
 
-  return (
-    <Box
-      sx={{
-        borderRadius: 2.5,
-        border: `1px solid ${palette.border}`,
-        backgroundColor: palette.bg,
-        px: 1.5,
-        py: 1.1,
-        flex: { xs: 'unset', sm: 1 },
-        minWidth: 0,
-      }}
-    >
-      <Typography sx={{ color: mutedText, fontSize: 12, fontWeight: 700 }}>{title}</Typography>
-      <Typography sx={{ color: palette.text, fontSize: 26, fontWeight: 800, lineHeight: 1.1 }}>
-        {value}
-      </Typography>
-    </Box>
-  );
-};
+//   return (
+//     <Box
+//       sx={{
+//         borderRadius: 2.5,
+//         border: `1px solid ${palette.border}`,
+//         backgroundColor: palette.bg,
+//         px: 1.5,
+//         py: 1.1,
+//         flex: { xs: 'unset', sm: 1 },
+//         minWidth: 0,
+//       }}
+//     >
+//       <Typography sx={{ color: mutedText, fontSize: 12, fontWeight: 700 }}>{title}</Typography>
+//       <Typography sx={{ color: palette.text, fontSize: 26, fontWeight: 800, lineHeight: 1.1 }}>
+//         {value}
+//       </Typography>
+//     </Box>
+//   );
+// };
 
 const PipelinesManagementPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -172,8 +172,8 @@ const PipelinesManagementPage = () => {
 
   const rows = useMemo(() => pipelines, [pipelines]);
   const isFilterPopoverOpen = Boolean(filterAnchorEl);
-  const defaultCount = useMemo(() => rows.filter((item) => item.isDefault).length, [rows]);
-  const customCount = Math.max(0, rows.length - defaultCount);
+  // const defaultCount = useMemo(() => rows.filter((item) => item.isDefault).length, [rows]);
+  // const customCount = Math.max(0, rows.length - defaultCount);
   const availableTargetPipelines = useMemo(() => {
     const selectedId = pipelineToDelete?._id?.trim();
     if (!selectedId) return [];
