@@ -1110,6 +1110,7 @@ const DealsPage = () => {
         ) : null}
       </Box>
 
+     { isAddDealOpen && ( 
       <AddDealModal
         open={isAddDealOpen}
         onClose={() => {
@@ -1121,7 +1122,7 @@ const DealsPage = () => {
           setEditingDeal(null);
         }}
         initialDeal={editingDeal}
-      />
+      />)}
 
       <MarkLostDealModal
         open={Boolean(lostDealId)}

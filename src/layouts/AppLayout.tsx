@@ -101,6 +101,7 @@ const AppLayout = () => {
         open={isAddDealOpen}
         onClose={() => setIsAddDealOpen(false)}
         onSave={handleTopbarDealSave}
+        initialDeal={null}
       />
       )}
      {isAddContactOpen && ( 

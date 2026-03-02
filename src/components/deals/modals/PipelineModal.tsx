@@ -1,6 +1,6 @@
 import type React from 'react';
-import { useEffect, useMemo, useState } from 'react';
-import { Box, Stack, Switch, Typography } from '@mui/material';
+import { useMemo, useState } from 'react';
+import { Box, Stack, Typography } from '@mui/material';
 import BasicInput from '../../../common/BasicInput';
 import { CustomButton } from '../../../common/CustomButton';
 import CustomModal from '../../../common/CustomModal';
@@ -19,7 +19,6 @@ type StageDraft = {
   name: string;
   color: string;
   order: number;
-  isDefault: boolean;
 };
 
 type PipelineModalMode = 'create' | 'edit';
@@ -38,32 +37,52 @@ type PipelineModalProps = {
   } | null;
 };
 
+type PipelineModalContentProps = Omit<PipelineModalProps, 'open'>;
+
 const DEFAULT_STAGE_DRAFTS: StageDraft[] = [
-  { name: 'Lead', color: '#2563eb', order: 0, isDefault: true },
-  { name: 'Qualified', color: '#0f766e', order: 1, isDefault: false },
-  { name: 'Proposal', color: '#7c3aed', order: 2, isDefault: false },
+  { name: 'Lead', color: '#2563eb', order: 0 },
+  { name: 'Qualified', color: '#0f766e', order: 1 },
+  { name: 'Proposal', color: '#7c3aed', order: 2 },
 ];
 
-const PipelineModal = ({
-  open,
+const getInitialStageDrafts = (
+  isEdit: boolean,
+  editPipeline: PipelineModalProps['editPipeline'],
+  stagePalette: string[],
+): StageDraft[] => {
+  if (isEdit && editPipeline) {
+    const normalizedStages = (editPipeline.stages ?? []).map((stage, index) => ({
+      _id: stage._id,
+      name: stage.name ?? '',
+      color: stage.color?.trim() || stagePalette[index % stagePalette.length],
+      order: typeof stage.order === 'number' ? stage.order : index,
+    }));
+
+    return normalizedStages.length ? normalizedStages : [{ name: 'Lead', color: '#2563eb', order: 0 }];
+  }
+
+  return DEFAULT_STAGE_DRAFTS;
+};
+
+const PipelineModalContent = ({
   mode,
   onClose,
   onCreateSuccess,
   onUpdateSuccess,
   editPipeline = null,
-}: PipelineModalProps) => {
+}: PipelineModalContentProps) => {
   const isEdit = mode === 'edit';
   const { createPipeline, loading: isCreatingPipeline } = useCreatePipelineMutation();
   const { updatePipeline, loading: isUpdatingPipeline } = useUpdatePipelineMutation();
-  const [pipelineName, setPipelineName] = useState('');
-  const [isDefault, setIsDefault] = useState(false);
-  const [stageDrafts, setStageDrafts] = useState<StageDraft[]>(DEFAULT_STAGE_DRAFTS);
-  const [pipelineValidationError, setPipelineValidationError] = useState<string | null>(null);
-
   const stagePalette = useMemo(
     () => ['#2563eb', '#0f766e', '#7c3aed', '#b45309', '#15803d', '#ef4444'],
     [],
   );
+  const [pipelineName, setPipelineName] = useState(() => (isEdit ? editPipeline?.name ?? '' : ''));
+  const [stageDrafts, setStageDrafts] = useState<StageDraft[]>(() =>
+    getInitialStageDrafts(isEdit, editPipeline, stagePalette),
+  );
+  const [pipelineValidationError, setPipelineValidationError] = useState<string | null>(null);
 
   const getStageBackground = (hex: string) => {
     const clean = hex.replace('#', '');
@@ -75,48 +94,6 @@ const PipelineModal = ({
     const mix = (channel: number) => Math.round(channel + (255 - channel) * 0.82);
     return `rgb(${mix(r)}, ${mix(g)}, ${mix(b)})`;
   };
-
-  const resetForm = () => {
-    setPipelineName('');
-    setIsDefault(false);
-    setStageDrafts(DEFAULT_STAGE_DRAFTS);
-    setPipelineValidationError(null);
-  };
-
-  useEffect(() => {
-    if (!open) {
-      resetForm();
-      return;
-    }
-
-    if (isEdit && editPipeline) {
-      setPipelineName(editPipeline.name ?? '');
-      setIsDefault(Boolean(editPipeline.isDefault));
-
-      const normalizedStages = (editPipeline.stages ?? []).map((stage, index) => ({
-        _id: stage._id,
-        name: stage.name ?? '',
-        color: stage.color?.trim() || stagePalette[index % stagePalette.length],
-        order: typeof stage.order === 'number' ? stage.order : index,
-        isDefault: Boolean(stage.isDefault),
-      }));
-
-      setStageDrafts(
-        normalizedStages.length
-          ? normalizedStages
-          : [{ name: 'Lead', color: '#2563eb', order: 0, isDefault: true }],
-      );
-      setPipelineValidationError(null);
-      return;
-    }
-
-    if (!isEdit) {
-      setPipelineName('');
-      setIsDefault(false);
-      setStageDrafts(DEFAULT_STAGE_DRAFTS);
-      setPipelineValidationError(null);
-    }
-  }, [open, isEdit, editPipeline, stagePalette]);
 
   const isSubmitDisabled =
     isEdit
@@ -133,7 +110,6 @@ const PipelineModal = ({
 
     const seenNames = new Set<string>();
     const seenOrders = new Set<number>();
-    let defaultCount = 0;
 
     for (let index = 0; index < drafts.length; index += 1) {
       const stage = drafts[index];
@@ -157,14 +133,6 @@ const PipelineModal = ({
         return { success: false as const, message: 'Stage orders must be unique.' };
       }
       seenOrders.add(stage.order);
-
-      if (stage.isDefault) {
-        defaultCount += 1;
-      }
-    }
-
-    if (defaultCount > 1) {
-      return { success: false as const, message: 'Only one stage can be marked as default.' };
     }
 
     return { success: true as const };
@@ -197,13 +165,11 @@ const PipelineModal = ({
 
       const payload: UpdatePipelinePayload = {
         name: trimmedName,
-        isDefault,
         stages: normalizedStages.map((stage) => ({
           ...(stage._id ? { _id: stage._id } : {}),
           name: stage.name.trim(),
           color: stage.color.trim() || null,
           order: stage.order,
-          ...(stage.isDefault ? { isDefault: true } : {}),
         })),
       };
 
@@ -211,7 +177,6 @@ const PipelineModal = ({
         await updatePipeline(pipelineId, payload);
         onUpdateSuccess?.();
         onClose();
-        resetForm();
       } catch (error) {
         setPipelineValidationError(
           error instanceof AppHttpError
@@ -253,7 +218,6 @@ const PipelineModal = ({
       };
       onCreateSuccess?.(newPipeline);
       onClose();
-      resetForm();
     } catch (error) {
       setPipelineValidationError(
         error instanceof AppHttpError
@@ -265,13 +229,14 @@ const PipelineModal = ({
 
   return (
     <CustomModal
-      open={open}
+      open
       handleClose={onClose}
       handleSubmit={handleSubmit}
       submitDisabled={isSubmitDisabled}
+      maxWidth={680}
       title={isEdit ? 'Edit Pipeline' : 'Create Pipeline'}
       description={
-        isEdit ? 'Update pipeline details, stage list, and defaults.' : 'Add a pipeline and define its stages.'
+        isEdit ? 'Update pipeline details and stage list.' : 'Add a pipeline and define its stages.'
       }
       submitButtonText={isEdit ? 'Save Changes' : 'Create'}
     >
@@ -291,29 +256,6 @@ const PipelineModal = ({
           />
         </Box>
 
-        <Stack
-          direction="row"
-          justifyContent="space-between"
-          alignItems="center"
-          sx={{ border: '1px solid #e2e8f0', borderRadius: 2, px: 1.25, py: 0.75 }}
-        >
-          <Stack spacing={0.1}>
-            <Typography sx={{ color: '#334155', fontWeight: 700, fontSize: 13 }}>
-              Set as default pipeline
-            </Typography>
-            <Typography sx={{ color: '#64748b', fontSize: 12 }}>
-              Mark this as the primary pipeline
-            </Typography>
-          </Stack>
-          <Switch
-            checked={isDefault}
-            onChange={(event) => {
-              if (pipelineValidationError) setPipelineValidationError(null);
-              setIsDefault(event.target.checked);
-            }}
-          />
-        </Stack>
-
         <Stack spacing={1}>
           <Typography sx={{ fontWeight: 700, color: '#0f172a', mb: 0.5 }}>Stages & Colors</Typography>
           <Box
@@ -331,7 +273,7 @@ const PipelineModal = ({
                 key={`${stage._id ?? 'new'}-${stageIndex}`}
                 sx={{
                   display: 'grid',
-                  gridTemplateColumns: { xs: '1fr', sm: '1.4fr 1fr' },
+                  gridTemplateColumns: { xs: '1fr', sm: 'minmax(0, 1fr) auto' },
                   gap: 1,
                   alignItems: 'center',
                 }}
@@ -373,24 +315,6 @@ const PipelineModal = ({
                       flexShrink: 0,
                     }}
                   />
-
-                  <CustomButton
-                    variant={stage.isDefault ? 'contained' : 'outlined'}
-                    customColor={stage.isDefault ? '#0f766e' : '#0f766e'}
-                    sx={{ borderRadius: 999, px: 1.25, textTransform: 'none', minWidth: 90 }}
-                    onClick={() => {
-                      if (pipelineValidationError) setPipelineValidationError(null);
-                      setStageDrafts((prev) =>
-                        prev.map((item, index) => ({
-                          ...item,
-                          isDefault: index === stageIndex,
-                        })),
-                      );
-                    }}
-                  >
-                    Default
-                  </CustomButton>
-
                   <CustomButton
                     variant="outlined"
                     customColor="#ef4444"
@@ -420,7 +344,6 @@ const PipelineModal = ({
                   name: '',
                   color: stagePalette[prev.length % stagePalette.length],
                   order: prev.length,
-                  isDefault: false,
                 },
               ]);
             }}
@@ -437,6 +360,32 @@ const PipelineModal = ({
         ) : null}
       </Stack>
     </CustomModal>
+  );
+};
+
+const PipelineModal = ({
+  open,
+  mode,
+  onClose,
+  onCreateSuccess,
+  onUpdateSuccess,
+  editPipeline = null,
+}: PipelineModalProps) => {
+  if (!open) {
+    return null;
+  }
+
+  const modalKey = mode === 'edit' ? `edit-${editPipeline?.id ?? 'pipeline'}` : 'create-pipeline';
+
+  return (
+    <PipelineModalContent
+      key={modalKey}
+      mode={mode}
+      onClose={onClose}
+      onCreateSuccess={onCreateSuccess}
+      onUpdateSuccess={onUpdateSuccess}
+      editPipeline={editPipeline}
+    />
   );
 };
 

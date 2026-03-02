@@ -303,13 +303,13 @@ const PipelinesManagementPage = () => {
         onClose={() => setFilterAnchorEl(null)}
       />
 
-      <Box sx={{ ...cardSx, p: { xs: 1.25, sm: 1.5 } }}>
+      {/* <Box sx={{ ...cardSx, p: { xs: 1.25, sm: 1.5 } }}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
           <MetricCard title="Total Pipelines" value={totalPipelines} tone="blue" />
           <MetricCard title="Default Pipelines" value={defaultCount} tone="green" />
           <MetricCard title="Custom Pipelines" value={customCount} tone="orange" />
         </Stack>
-      </Box>
+      </Box> */}
 
       <Box
         sx={{

@@ -78,6 +78,7 @@ const DealDetailsPage = () => {
   const { dealId } = useParams();
   const { deal, loading, hasError, errorMessage } = useDealDetailsQuery(dealId);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editingDeal, setEditingDeal] = useState<AddDealInitialData | null>(null);
   const [lostReason, setLostReason] = useState('');
   const [isLostModalOpen, setIsLostModalOpen] = useState(false);
   const [wonConfirmOpen, setWonConfirmOpen] = useState(false);
@@ -228,7 +229,10 @@ const DealDetailsPage = () => {
                 ml: { xs: 0, sm: 'auto' },
                 width: { xs: '100%', sm: 'auto' },
               }}
-              onClick={() => setIsEditOpen(true)}
+              onClick={() => {
+                setEditingDeal(editInitialDeal);
+                setIsEditOpen(true);
+              }}
             >
               Edit Deal
             </CustomButton>
@@ -421,9 +425,15 @@ const DealDetailsPage = () => {
       {isEditOpen && (
         <AddDealModal
         open={isEditOpen}
-        onClose={() => setIsEditOpen(false)}
-        onSave={() => setIsEditOpen(false)}
-        initialDeal={editInitialDeal}
+        onClose={() => {
+          setIsEditOpen(false);
+          setEditingDeal(null);
+        }}
+        onSave={() => {
+          setIsEditOpen(false);
+          setEditingDeal(null);
+        }}
+        initialDeal={editingDeal}
       />)}
 
       {wonConfirmOpen && (

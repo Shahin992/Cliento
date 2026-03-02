@@ -43,6 +43,7 @@ interface CustomModalProps {
   children?: React.ReactNode;
   closeButtonText?: string;
   submitButtonText?: string;
+  maxWidth?: number;
 }
 
 const CustomModal = ({
@@ -57,6 +58,7 @@ const CustomModal = ({
   children,
   closeButtonText = 'Close',
   submitButtonText = 'Submit',
+  maxWidth = 900,
 }: CustomModalProps) => (
   <Modal
     open={open}
@@ -64,7 +66,7 @@ const CustomModal = ({
     aria-labelledby="custom-modal-title"
     aria-describedby="custom-modal-description"
   >
-    <Box sx={style}>
+    <Box sx={{ ...style, maxWidth }}>
       <Stack direction="row" alignItems="center" spacing={2} mb={1}>
         {icon ? (
           icon
