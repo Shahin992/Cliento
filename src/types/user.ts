@@ -5,6 +5,8 @@ export type User = {
   fullName: string;
   companyName: string;
   email: string;
+  connectedEmails?: string[];
+  connectedEmailCount?: number;
   role: UserRole;
   ownerInfo: unknown;
   profilePhoto: string | null;

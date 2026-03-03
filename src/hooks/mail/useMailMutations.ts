@@ -7,6 +7,13 @@ type GoogleMailboxActionResponse = {
   message: string;
 };
 
+export type SendGoogleMailPayload = {
+  to: string[];
+  from: string;
+  subject: string;
+  body: string;
+};
+
 export const useDisconnectGoogleMailboxMutation = () => {
   const queryClient = useQueryClient();
   const mutation = useMutation<GoogleMailboxActionResponse, AppHttpError, string>({
@@ -89,6 +96,32 @@ export const useMakeDefaultGoogleMailboxMutation = () => {
   return {
     ...mutation,
     makeDefaultMailbox: (mailboxId: string) => mutation.mutateAsync(mailboxId),
+    loading: mutation.isPending,
+    errorMessage: mutation.error?.message ?? null,
+  };
+};
+
+export const useSendGoogleMailMutation = () => {
+  const mutation = useMutation<GoogleMailboxActionResponse, AppHttpError, SendGoogleMailPayload>({
+    mutationFn: (payload) =>
+      httpRequest<unknown, SendGoogleMailPayload>({
+        method: 'POST',
+        url: '/api/mail/google/send',
+        data: payload,
+      }).then((response) => {
+        if (!response.success) {
+          throw new AppHttpError(response as never);
+        }
+
+        return {
+          message: response.message || 'Email sent successfully.',
+        };
+      }),
+  });
+
+  return {
+    ...mutation,
+    sendMail: (payload: SendGoogleMailPayload) => mutation.mutateAsync(payload),
     loading: mutation.isPending,
     errorMessage: mutation.error?.message ?? null,
   };

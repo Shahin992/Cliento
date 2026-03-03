@@ -25,12 +25,16 @@ import {
 } from '@mui/icons-material';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
+import { useAppSelector } from '../app/hooks';
 import AddContactModal from '../components/contacts/modals/AddContactModal';
 import ContactDealsSection from '../components/contacts/details/ContactDealsSection';
 import ContactNotesSection from '../components/contacts/details/ContactNotesSection';
+import EmailComposerDrawer from '../components/mail/EmailComposerDrawer';
 import ConfirmationAlertModal from '../common/ConfirmationAlertModal';
 import { useToast } from '../common/ToastProvider';
 import { type ContactDetails } from '../hooks/contacts/contactTypes';
+import type { SendGoogleMailPayload } from '../hooks/mail/useMailMutations';
+import { useSendGoogleMailMutation } from '../hooks/mail/useMailMutations';
 import { useContactByIdQuery } from '../hooks/contacts/useContactsQueries';
 import { useDeleteContactMutation } from '../hooks/contacts/useContactsMutations';
 
@@ -100,8 +104,11 @@ const ContactDetailsPage = () => {
   const [actionsMenuAnchorEl, setActionsMenuAnchorEl] = useState<HTMLElement | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isMailConnectionAlertOpen, setIsMailConnectionAlertOpen] = useState(false);
+  const [isEmailDrawerOpen, setIsEmailDrawerOpen] = useState(false);
   const isActionsMenuOpen = Boolean(actionsMenuAnchorEl);
   const { showToast } = useToast();
+  const authUser = useAppSelector((state) => state.auth.user);
   const {
     contact: queriedContact,
     loading: isLoading,
@@ -109,6 +116,7 @@ const ContactDetailsPage = () => {
   } = useContactByIdQuery(contactId);
   const contact = queriedContact ?? null;
   const { deleteContact, loading: isDeletingContact } = useDeleteContactMutation();
+  const { sendMail, loading: isSendingMail } = useSendGoogleMailMutation();
 
   const handleOpenActionsMenu = (event: MouseEvent<HTMLElement>) => {
     setActionsMenuAnchorEl(event.currentTarget);
@@ -166,11 +174,50 @@ const ContactDetailsPage = () => {
   const emailCount = contact?.emails?.length ?? 0;
   const phoneCount = contact?.phones?.length ?? 0;
   const primaryEmail = contact?.emails?.[0] || '-';
+  const connectedEmails = useMemo(
+    () => authUser?.connectedEmails?.map((email) => email.trim()).filter(Boolean) ?? [],
+    [authUser?.connectedEmails]
+  );
+  const hasConnectedEmails =
+    (authUser?.connectedEmailCount ?? connectedEmails.length) > 0 && connectedEmails.length > 0;
 
   const contactTags = useMemo(
     () => (contact?.tags ?? []).map((tag) => tag?.trim()).filter((tag): tag is string => Boolean(tag)),
     [contact]
   );
+
+  const handleEmailClick = () => {
+    if (!contact?.emails?.[0]) {
+      showToast({
+        message: 'This contact does not have an email address.',
+        severity: 'error',
+      });
+      return;
+    }
+
+    if (!hasConnectedEmails) {
+      setIsMailConnectionAlertOpen(true);
+      return;
+    }
+
+    setIsEmailDrawerOpen(true);
+  };
+
+  const handleSendEmail = async (payload: SendGoogleMailPayload) => {
+    try {
+      const response = await sendMail(payload);
+      showToast({
+        message: response.message || 'Email sent successfully.',
+        severity: 'success',
+      });
+      setIsEmailDrawerOpen(false);
+    } catch (error) {
+      showToast({
+        message: error instanceof Error ? error.message : 'Failed to send email.',
+        severity: 'error',
+      });
+    }
+  };
 
   return (
     <Box
@@ -292,7 +339,12 @@ const ContactDetailsPage = () => {
               </Stack>
 
               <Stack direction="row" spacing={1} flexWrap="wrap">
-                <Button variant="outlined" startIcon={<AlternateEmailOutlined sx={{ fontSize: 16 }} />} sx={{ textTransform: 'none', borderColor, color: '#111827', minWidth: { xs: 90, sm: 96 } }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<AlternateEmailOutlined sx={{ fontSize: 16 }} />}
+                  onClick={handleEmailClick}
+                  sx={{ textTransform: 'none', borderColor, color: '#111827', minWidth: { xs: 90, sm: 96 } }}
+                >
                   Email
                 </Button>
               </Stack>
@@ -541,18 +593,45 @@ const ContactDetailsPage = () => {
         />
       ) : null}
 
-     { isDeleteConfirmOpen && ( 
+      {contact ? (
+        <EmailComposerDrawer
+          open={isEmailDrawerOpen}
+          fromEmails={connectedEmails}
+          initialTo={contact.emails?.[0] ?? ''}
+          title={`Email ${fullName}`}
+          subtitle="Use one of your connected mailboxes to draft a message."
+          isSubmitting={isSendingMail}
+          onClose={() => setIsEmailDrawerOpen(false)}
+          onSubmit={handleSendEmail}
+        />
+      ) : null}
+
       <ConfirmationAlertModal
-        open={isDeleteConfirmOpen}
-        variant="delete"
-        title="Delete contact?"
-        message="This action cannot be undone. Do you want to continue?"
-        confirmText="Yes, delete"
-        cancelText="No, keep it"
-        isConfirmLoading={isDeletingContact}
-        onClose={() => setIsDeleteConfirmOpen(false)}
-        onConfirm={handleConfirmDeleteContact}
+        open={isMailConnectionAlertOpen}
+        variant="warning"
+        title="Connect an email first"
+        message="No connected email was found for your account. Connect an email to start sending messages from contact details."
+        confirmText="Connect Email"
+        cancelText="Not now"
+        onClose={() => setIsMailConnectionAlertOpen(false)}
+        onConfirm={() => {
+          setIsMailConnectionAlertOpen(false);
+          navigate('/settings/mail');
+        }}
       />
+
+      {isDeleteConfirmOpen && (
+        <ConfirmationAlertModal
+          open={isDeleteConfirmOpen}
+          variant="delete"
+          title="Delete contact?"
+          message="This action cannot be undone. Do you want to continue?"
+          confirmText="Yes, delete"
+          cancelText="No, keep it"
+          isConfirmLoading={isDeletingContact}
+          onClose={() => setIsDeleteConfirmOpen(false)}
+          onConfirm={handleConfirmDeleteContact}
+        />
       )}
     </Box>
   );
