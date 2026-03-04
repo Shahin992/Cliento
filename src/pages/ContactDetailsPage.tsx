@@ -29,6 +29,7 @@ import { useAppSelector } from '../app/hooks';
 import AddContactModal from '../components/contacts/modals/AddContactModal';
 import ContactDealsSection from '../components/contacts/details/ContactDealsSection';
 import ContactNotesSection from '../components/contacts/details/ContactNotesSection';
+import ContactEmailConversation from '../components/contacts/details/ContactEmailConversation';
 import EmailComposerDrawer from '../components/mail/EmailComposerDrawer';
 import ConfirmationAlertModal from '../common/ConfirmationAlertModal';
 import { useToast } from '../common/ToastProvider';
@@ -42,14 +43,78 @@ const borderColor = '#e6eaf1';
 const mutedText = '#7e8796';
 const primary = '#6d28ff';
 
-type ContactTabKey = 'deals' | 'notes' | 'inbox' | 'tasks';
+type ContactTabKey = 'deals' | 'notes' | 'conversation' | 'inbox' | 'tasks';
 
 const contactTabs: Array<{ key: ContactTabKey; label: string; enabled: boolean }> = [
   { key: 'deals', label: 'Deals', enabled: true },
   { key: 'notes', label: 'Notes', enabled: true },
+  { key: 'conversation', label: 'Conversation', enabled: true },
   { key: 'inbox', label: 'Inbox', enabled: false },
   { key: 'tasks', label: 'Tasks', enabled: false },
 ];
+
+const dummyConversation = [
+  {
+    id: 1,
+    role: 'receiver',
+    subject: 'Re: Onboarding timeline',
+    from: 'contact@northwind.com',
+    to: 'sales@cliento.app',
+    text: 'Hi, I checked the proposal. Can we discuss the onboarding timeline?',
+    day: 'Today',
+    time: '09:10 AM',
+  },
+  {
+    id: 2,
+    role: 'sender',
+    subject: 'Re: Onboarding timeline',
+    from: 'sales@cliento.app',
+    to: 'contact@northwind.com',
+    text: 'Sure. We can start onboarding next Monday and complete setup in 3 days.',
+    day: 'Today',
+    time: '09:12 AM',
+  },
+  {
+    id: 3,
+    role: 'receiver',
+    subject: 'CRM migration scope',
+    from: 'contact@northwind.com',
+    to: 'sales@cliento.app',
+    text: 'Great. Please include CRM migration support in the first phase.',
+    day: 'Today',
+    time: '09:14 AM',
+  },
+  {
+    id: 4,
+    role: 'sender',
+    subject: 'Re: CRM migration scope',
+    from: 'sales@cliento.app',
+    to: 'contact@northwind.com',
+    text: 'Done. I will send an updated plan with migration tasks by noon.',
+    day: 'Today',
+    time: '09:16 AM',
+  },
+  {
+    id: 5,
+    role: 'receiver',
+    subject: 'Thanks',
+    from: 'contact@northwind.com',
+    to: 'sales@cliento.app',
+    text: 'Perfect, thanks.',
+    day: 'Today',
+    time: '09:17 AM',
+  },
+  {
+    id: 6,
+    role: 'receiver',
+    subject: 'Thanks',
+    from: 'contact@northwind.com',
+    to: 'sales@cliento.app',
+    text: 'Perfect, thanks.',
+    day: 'Today',
+    time: '09:17 AM',
+  },
+] as const;
 
 const detailLabelSx = { color: mutedText, fontSize: 13, minWidth: { xs: 'auto', lg: 104 }, flexShrink: 0 };
 const detailValueContainerSx = {
@@ -429,6 +494,8 @@ const ContactDetailsPage = () => {
                 />
               ) : activeTab === 'notes' ? (
                 <ContactNotesSection contactId={contactId} />
+              ) : activeTab === 'conversation' ? (
+                <ContactEmailConversation messages={dummyConversation} />
               ) : (
                 <Box sx={{ border: `1px dashed ${borderColor}`, borderRadius: 2, p: 2.5 }}>
                   <Typography sx={{ fontWeight: 700, color: '#111827', textTransform: 'capitalize' }}>
