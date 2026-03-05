@@ -14,10 +14,10 @@ import {
   Typography,
 } from '@mui/material';
 import {
-  AlternateEmailOutlined,
   ArrowBack,
   CameraAltOutlined,
   DeleteOutlineOutlined,
+  EmailOutlined,
   EditOutlined,
   LocationOnOutlined,
   MoreHoriz,
@@ -34,6 +34,7 @@ import EmailComposerDrawer from '../components/mail/EmailComposerDrawer';
 import ConfirmationAlertModal from '../common/ConfirmationAlertModal';
 import { useToast } from '../common/ToastProvider';
 import { type ContactDetails } from '../hooks/contacts/contactTypes';
+import { useConversationsInfiniteQuery } from '../hooks/contacts/useConversationsInfiniteQuery';
 import type { SendGoogleMailPayload } from '../hooks/mail/useMailMutations';
 import { useSendGoogleMailMutation } from '../hooks/mail/useMailMutations';
 import { useContactByIdQuery } from '../hooks/contacts/useContactsQueries';
@@ -46,75 +47,12 @@ const primary = '#6d28ff';
 type ContactTabKey = 'deals' | 'notes' | 'conversation' | 'inbox' | 'tasks';
 
 const contactTabs: Array<{ key: ContactTabKey; label: string; enabled: boolean }> = [
+  { key: 'conversation', label: 'Conversation', enabled: true },
   { key: 'deals', label: 'Deals', enabled: true },
   { key: 'notes', label: 'Notes', enabled: true },
-  { key: 'conversation', label: 'Conversation', enabled: true },
   { key: 'inbox', label: 'Inbox', enabled: false },
   { key: 'tasks', label: 'Tasks', enabled: false },
 ];
-
-const dummyConversation = [
-  {
-    id: 1,
-    role: 'receiver',
-    subject: 'Re: Onboarding timeline',
-    from: 'contact@northwind.com',
-    to: 'sales@cliento.app',
-    text: 'Hi, I checked the proposal. Can we discuss the onboarding timeline?',
-    day: 'Today',
-    time: '09:10 AM',
-  },
-  {
-    id: 2,
-    role: 'sender',
-    subject: 'Re: Onboarding timeline',
-    from: 'sales@cliento.app',
-    to: 'contact@northwind.com',
-    text: 'Sure. We can start onboarding next Monday and complete setup in 3 days.',
-    day: 'Today',
-    time: '09:12 AM',
-  },
-  {
-    id: 3,
-    role: 'receiver',
-    subject: 'CRM migration scope',
-    from: 'contact@northwind.com',
-    to: 'sales@cliento.app',
-    text: 'Great. Please include CRM migration support in the first phase.',
-    day: 'Today',
-    time: '09:14 AM',
-  },
-  {
-    id: 4,
-    role: 'sender',
-    subject: 'Re: CRM migration scope',
-    from: 'sales@cliento.app',
-    to: 'contact@northwind.com',
-    text: 'Done. I will send an updated plan with migration tasks by noon.',
-    day: 'Today',
-    time: '09:16 AM',
-  },
-  {
-    id: 5,
-    role: 'receiver',
-    subject: 'Thanks',
-    from: 'contact@northwind.com',
-    to: 'sales@cliento.app',
-    text: 'Perfect, thanks.',
-    day: 'Today',
-    time: '09:17 AM',
-  },
-  {
-    id: 6,
-    role: 'receiver',
-    subject: 'Thanks',
-    from: 'contact@northwind.com',
-    to: 'sales@cliento.app',
-    text: 'Perfect, thanks.',
-    day: 'Today',
-    time: '09:17 AM',
-  },
-] as const;
 
 const detailLabelSx = { color: mutedText, fontSize: 13, minWidth: { xs: 'auto', lg: 104 }, flexShrink: 0 };
 const detailValueContainerSx = {
@@ -128,6 +66,22 @@ const formatDateTime = (value?: string | null) => {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '-';
   return date.toLocaleString();
+};
+
+const formatConversationDate = (value?: string | null) => {
+  if (!value) {
+    return { day: '-', time: '-' };
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return { day: '-', time: '-' };
+  }
+
+  return {
+    day: date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }),
+    time: date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }),
+  };
 };
 
 const formatAddress = (contact: ContactDetails) => {
@@ -163,7 +117,7 @@ const ContactDetailsSkeleton = () => (
 const ContactDetailsPage = () => {
   const navigate = useNavigate();
   const { contactId } = useParams();
-  const [activeTab, setActiveTab] = useState<ContactTabKey>('deals');
+  const [activeTab, setActiveTab] = useState<ContactTabKey>('conversation');
   const [dealStatusFilter, setDealStatusFilter] = useState<'open' | 'won' | 'lost'>('open');
   const [associatedDealsCount, setAssociatedDealsCount] = useState(0);
   const [actionsMenuAnchorEl, setActionsMenuAnchorEl] = useState<HTMLElement | null>(null);
@@ -182,6 +136,15 @@ const ContactDetailsPage = () => {
   const contact = queriedContact ?? null;
   const { deleteContact, loading: isDeletingContact } = useDeleteContactMutation();
   const { sendMail, loading: isSendingMail } = useSendGoogleMailMutation();
+  const {
+    conversations,
+    initialLoading: isConversationInitialLoading,
+    refreshing: isConversationRefreshing,
+    loadingMore: isConversationLoadingMore,
+    hasNextPage: hasNextConversationsPage,
+    fetchNextPage: fetchNextConversationsPage,
+    errorMessage: conversationErrorMessage,
+  } = useConversationsInfiniteQuery(contactId, 10, activeTab === 'conversation' && Boolean(contactId));
 
   const handleOpenActionsMenu = (event: MouseEvent<HTMLElement>) => {
     setActionsMenuAnchorEl(event.currentTarget);
@@ -249,6 +212,39 @@ const ContactDetailsPage = () => {
   const contactTags = useMemo(
     () => (contact?.tags ?? []).map((tag) => tag?.trim()).filter((tag): tag is string => Boolean(tag)),
     [contact]
+  );
+  const authUserInitials = useMemo(() => {
+    const name = authUser?.fullName?.trim() ?? '';
+    if (!name) return 'U';
+    const parts = name.split(/\s+/).filter(Boolean);
+    const first = parts[0]?.[0] ?? '';
+    const last = parts[1]?.[0] ?? '';
+    return `${first}${last}`.toUpperCase() || first.toUpperCase() || 'U';
+  }, [authUser?.fullName]);
+  const conversationMessages = useMemo(
+    () =>
+      conversations.map((item) => {
+        const rawBody = item.body?.trim() ?? '';
+        const normalizedBody = rawBody
+          ? new DOMParser().parseFromString(rawBody, 'text/html').body.textContent?.trim() || rawBody
+          : '';
+        const { day, time } = formatConversationDate(item.sentAt);
+        const isOutgoing = item.direction === 'outgoing';
+
+        return {
+          id: item._id,
+          role: isOutgoing ? 'sender' : 'receiver',
+          avatarSrc: isOutgoing ? authUser?.profilePhoto ?? null : contact?.photoUrl ?? null,
+          avatarLabel: isOutgoing ? authUserInitials : initials,
+          subject: item.subject?.trim() || '(No subject)',
+          from: item.from || '-',
+          to: item.to.length ? item.to.join(', ') : '-',
+          text: normalizedBody || 'No message body',
+          day,
+          time,
+        } as const;
+      }),
+    [authUser?.profilePhoto, authUserInitials, contact?.photoUrl, conversations, initials]
   );
 
   const handleEmailClick = () => {
@@ -405,12 +401,17 @@ const ContactDetailsPage = () => {
 
               <Stack direction="row" spacing={1} flexWrap="wrap">
                 <Button
-                  variant="outlined"
-                  startIcon={<AlternateEmailOutlined sx={{ fontSize: 16 }} />}
+                  variant="contained"
+                  startIcon={<EmailOutlined sx={{ fontSize: 16 }} />}
                   onClick={handleEmailClick}
-                  sx={{ textTransform: 'none', borderColor, color: '#111827', minWidth: { xs: 90, sm: 96 } }}
+                  sx={{
+                    textTransform: 'none',
+                    minWidth: { xs: 120, sm: 132 },
+                    bgcolor: primary,
+                    '&:hover': { bgcolor: '#5b21d7' },
+                  }}
                 >
-                  Email
+                  Send Email
                 </Button>
               </Stack>
             </Stack>
@@ -495,7 +496,19 @@ const ContactDetailsPage = () => {
               ) : activeTab === 'notes' ? (
                 <ContactNotesSection contactId={contactId} />
               ) : activeTab === 'conversation' ? (
-                <ContactEmailConversation messages={dummyConversation} />
+                <ContactEmailConversation
+                  messages={conversationMessages}
+                  isInitialLoading={isConversationInitialLoading}
+                  isRefreshing={isConversationRefreshing}
+                  isLoadingMore={isConversationLoadingMore}
+                  hasNextPage={Boolean(hasNextConversationsPage)}
+                  errorMessage={conversationErrorMessage}
+                  onLoadMore={() => {
+                    if (hasNextConversationsPage && !isConversationLoadingMore) {
+                      void fetchNextConversationsPage();
+                    }
+                  }}
+                />
               ) : (
                 <Box sx={{ border: `1px dashed ${borderColor}`, borderRadius: 2, p: 2.5 }}>
                   <Typography sx={{ fontWeight: 700, color: '#111827', textTransform: 'capitalize' }}>
@@ -662,6 +675,7 @@ const ContactDetailsPage = () => {
 
       {contact ? (
         <EmailComposerDrawer
+          contactId={contact._id}
           open={isEmailDrawerOpen}
           fromEmails={connectedEmails}
           initialTo={contact.emails?.[0] ?? ''}

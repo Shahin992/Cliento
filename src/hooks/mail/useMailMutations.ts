@@ -2,12 +2,14 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AppHttpError } from '../useAppQuery';
 import { httpRequest } from '../../services/api';
 import { mailQueryKeys } from './useMailQueries';
+import { conversationsQueryKeys } from '../contacts/useConversationsInfiniteQuery';
 
 type GoogleMailboxActionResponse = {
   message: string;
 };
 
 export type SendGoogleMailPayload = {
+  contactId: string;
   to: string[];
   from: string;
   subject: string;
@@ -102,6 +104,7 @@ export const useMakeDefaultGoogleMailboxMutation = () => {
 };
 
 export const useSendGoogleMailMutation = () => {
+  const queryClient = useQueryClient();
   const mutation = useMutation<GoogleMailboxActionResponse, AppHttpError, SendGoogleMailPayload>({
     mutationFn: (payload) =>
       httpRequest<unknown, SendGoogleMailPayload>({
@@ -117,6 +120,9 @@ export const useSendGoogleMailMutation = () => {
           message: response.message || 'Email sent successfully.',
         };
       }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: conversationsQueryKeys.all });
+    },
   });
 
   return {

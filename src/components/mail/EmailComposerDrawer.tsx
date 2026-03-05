@@ -10,6 +10,7 @@ import TinyCloudEditor from '../../common/TinyCloudEditor';
 import type { SendGoogleMailPayload } from '../../hooks/mail/useMailMutations';
 
 interface EmailComposerDrawerProps {
+  contactId: string;
   open: boolean;
   title?: string;
   subtitle?: string;
@@ -50,6 +51,7 @@ const htmlToPlainText = (html: string) => {
 };
 
 const EmailComposerDrawer = ({
+  contactId,
   open,
   title = 'Compose Email',
   subtitle = 'Draft an email with a connected mailbox.',
@@ -127,6 +129,7 @@ const EmailComposerDrawer = ({
 
     setErrors({});
     await onSubmit({
+      contactId,
       to: toList,
       from: fromEmail.trim(),
       subject: subject.trim(),
