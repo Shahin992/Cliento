@@ -31,6 +31,7 @@ import ContactDealsSection from '../components/contacts/details/ContactDealsSect
 import ContactNotesSection from '../components/contacts/details/ContactNotesSection';
 import ContactEmailConversation from '../components/contacts/details/ContactEmailConversation';
 import EmailComposerDrawer from '../components/mail/EmailComposerDrawer';
+import { CustomButton } from '../common/CustomButton';
 import ConfirmationAlertModal from '../common/ConfirmationAlertModal';
 import { useToast } from '../common/ToastProvider';
 import { type ContactDetails } from '../hooks/contacts/contactTypes';
@@ -400,19 +401,17 @@ const ContactDetailsPage = () => {
               </Stack>
 
               <Stack direction="row" spacing={1} flexWrap="wrap">
-                <Button
+                <CustomButton
                   variant="contained"
                   startIcon={<EmailOutlined sx={{ fontSize: 16 }} />}
                   onClick={handleEmailClick}
                   sx={{
                     textTransform: 'none',
                     minWidth: { xs: 120, sm: 132 },
-                    bgcolor: primary,
-                    '&:hover': { bgcolor: '#5b21d7' },
                   }}
                 >
                   Send Email
-                </Button>
+                </CustomButton>
               </Stack>
             </Stack>
           </Box>

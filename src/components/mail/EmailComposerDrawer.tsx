@@ -1,11 +1,9 @@
-import { CloseOutlined } from '@mui/icons-material';
 import { Box, Drawer, Stack, Typography } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
 
 import BasicInput from '../../common/BasicInput';
 import BasicSelect from '../../common/BasicSelect';
 import { CustomButton } from '../../common/CustomButton';
-import { CustomIconButton } from '../../common/CustomIconButton';
 import TinyCloudEditor from '../../common/TinyCloudEditor';
 import type { SendGoogleMailPayload } from '../../hooks/mail/useMailMutations';
 
@@ -163,23 +161,14 @@ const EmailComposerDrawer = ({
           }}
         >
           <Box>
-            <Typography sx={{ fontSize: 20, fontWeight: 800, color: '#0f172a' }}>{title}</Typography>
-            <Typography sx={{ color: mutedText, fontSize: 13, mt: 0.5 }}>{subtitle}</Typography>
+            <Typography sx={{ display: { xs: 'none', sm: 'block' }, fontSize: 20, fontWeight: 800, color: '#0f172a' }}>
+              {title}
+            </Typography>
+            <Typography sx={{ display: { xs: 'none', sm: 'block' }, color: mutedText, fontSize: 13, mt: 0.5 }}>
+              {subtitle}
+            </Typography>
           </Box>
-          <CustomIconButton
-            size="small"
-            onClick={onClose}
-            customColor="#475569"
-            sx={{
-              width: 32,
-              height: 32,
-              borderRadius: 999,
-              border: `1px solid ${borderColor}`,
-              backgroundColor: '#fff',
-            }}
-          >
-            <CloseOutlined sx={{ fontSize: 18 }} />
-          </CustomIconButton>
+          <Box />
         </Stack>
 
         <Stack spacing={2} sx={{ flex: 1, overflowY: 'auto', px: { xs: 2, sm: 2.5 }, py: 2.5 }}>
@@ -232,7 +221,7 @@ const EmailComposerDrawer = ({
         </Stack>
 
         <Stack
-          direction={{ xs: 'column-reverse', sm: 'row' }}
+          direction="row"
           spacing={1}
           justifyContent="flex-end"
           sx={{
@@ -240,6 +229,8 @@ const EmailComposerDrawer = ({
             py: 1.75,
             borderTop: `1px solid ${borderColor}`,
             backgroundColor: 'white',
+            alignItems: 'center',
+            justifyContent: 'space-between',
           }}
         >
           <CustomButton
@@ -247,7 +238,7 @@ const EmailComposerDrawer = ({
             customColor="#94a3b8"
             onClick={onClose}
             disabled={isSubmitting}
-            sx={{ borderRadius: 999, textTransform: 'none', px: 2.5, width: { xs: '100%', sm: 'auto' } }}
+            sx={{ borderRadius: 999, textTransform: 'none', px: 2.5, width: 'auto' }}
           >
             Close
           </CustomButton>
@@ -256,7 +247,7 @@ const EmailComposerDrawer = ({
             customColor="#2563eb"
             onClick={() => void handleSubmit()}
             disabled={isSubmitting}
-            sx={{ borderRadius: 999, textTransform: 'none', px: 2.5, width: { xs: '100%', sm: 'auto' } }}
+            sx={{ borderRadius: 999, textTransform: 'none', px: 2.5, width: 'auto' }}
           >
             {isSubmitting ? 'Sending...' : 'Send Email'}
           </CustomButton>
